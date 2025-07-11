@@ -7,11 +7,12 @@ from prp_compiler.config import (
     DEFAULT_MANIFEST_PATH,
     DEFAULT_SCHEMAS_PATH,
     DEFAULT_TOOLS_PATH,
+    PROJECT_ROOT,
 )
-from prp_compiler.manifests import generate_and_save_all_manifests
+from prp_compiler.manifests import generate_manifest, save_manifest
 from prp_compiler.agents.planner import PlannerAgent
 from prp_compiler.agents.synthesizer import SynthesizerAgent
-from prp_compiler.orchestrator import Orchestrator
+from prp_compiler.orchestrator import Orchestrator, load_constitution
 from prp_compiler.utils import count_tokens
 
 
@@ -61,29 +62,43 @@ def run():
     )
     args = parser.parse_args()
 
-    print("1. Generating and saving manifests...")
-    tools_manifest, knowledge_manifest, schemas_manifest = (
-        generate_and_save_all_manifests(
-            args.tools_path, args.knowledge_path, args.schemas_path, args.manifest_path
-        )
-    )
+    print("1. Generating manifests...")
+    tools_manifest = generate_manifest(args.tools_path)
+    knowledge_manifest = generate_manifest(args.knowledge_path)
+    schemas_manifest = generate_manifest(args.schemas_path)
+    print("   Manifests generated.")
 
-    print("2. Planning execution...")
+    print("1.5. Saving manifests...")
+    save_manifest(
+        tools_manifest,
+        knowledge_manifest,
+        schemas_manifest,
+        args.manifest_path
+    )
+    print(f"   Manifests saved to {args.manifest_path}")
+
+    print("2. Loading constitution...")
+    constitution = load_constitution(PROJECT_ROOT)
+    if constitution:
+        print("   Constitution loaded from CLAUDE.md.")
+    else:
+        print("   No constitution (CLAUDE.md) found, proceeding without it.")
+
+    print("3. Planning execution...")
     planner = PlannerAgent()
     execution_plan = planner.plan(
-        args.goal, tools_manifest, knowledge_manifest, schemas_manifest
+        args.goal, tools_manifest, knowledge_manifest, schemas_manifest, constitution
     )
     print("   Execution plan created.")
 
-    print("3. Assembling context...")
+    print("4. Assembling context...")
     orchestrator = Orchestrator(tools_manifest, knowledge_manifest, schemas_manifest)
     schema_template, assembled_context = orchestrator.assemble_context(execution_plan)
     print("   Context assembled.")
 
-    print("3.5. Counting tokens in assembled context...")
-    # TODO: Plumb a model name parameter through the application.
-    # For now, this uses the default model in count_tokens ("gpt-4").
+    print("4.5. Counting tokens in assembled context...")
     token_count = count_tokens(assembled_context)
+
     print(f"   Assembled context contains approximately {token_count} tokens.")
 
     # Set a reasonable limit, e.g., 100k for Gemini 1.5 Pro
@@ -92,12 +107,12 @@ def run():
         print(f"[ERROR] Assembled context ({token_count} tokens) exceeds the limit of {TOKEN_LIMIT}. Please refine your goal or reduce the number of capabilities.")
         return # Exit gracefully
 
-    print("4. Synthesizing PRP...")
+    print("5. Synthesizing PRP...")
     synthesizer = SynthesizerAgent()
-    final_prp = synthesizer.synthesize(schema_template, assembled_context)
+    final_prp = synthesizer.synthesize(schema_template, assembled_context, constitution)
     print("   PRP synthesized.")
 
-    print(f"5. Saving PRP to {args.output}...")
+    print(f"6. Saving PRP to {args.output}...")
     with open(args.output, "w") as f:
         f.write(final_prp)
     print("Done.")

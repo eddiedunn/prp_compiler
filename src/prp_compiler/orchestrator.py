@@ -1,9 +1,18 @@
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
 from typing import List, Tuple
 from .models import ManifestItem, ExecutionPlan
+
+
+def load_constitution(root_path: Path) -> str:
+    """Loads the constitution from CLAUDE.md at the project root."""
+    constitution_path = root_path / "CLAUDE.md"
+    if constitution_path.is_file():
+        return constitution_path.read_text()
+    return ""
 
 
 class Orchestrator:
@@ -73,8 +82,8 @@ class Orchestrator:
         if prefix == "!":
             try:
                 # Split command to avoid shell=True
-                command_parts = command_or_path.split()
-                print(f"Executing command: {' '.join(command_parts)}")
+                command_parts = shlex.split(command_or_path)
+                print(f"Executing command: {command_parts}")
                 result = subprocess.run(
                     command_parts,
                     capture_output=True,

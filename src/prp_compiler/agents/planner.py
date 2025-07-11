@@ -62,6 +62,7 @@ class PlannerAgent(BaseAgent):
         tools_manifest: List[ManifestItem],
         knowledge_manifest: List[ManifestItem],
         schemas_manifest: List[ManifestItem],
+        constitution: str,
     ) -> ExecutionPlan:
         """
         Generates an execution plan by calling the LLM.
@@ -71,7 +72,7 @@ class PlannerAgent(BaseAgent):
         knowledge_str = json.dumps([item.model_dump() for item in knowledge_manifest], indent=2)
         schemas_str = json.dumps([item.model_dump() for item in schemas_manifest], indent=2)
 
-        prompt = PLANNER_PROMPT_TEMPLATE.format(
+        prompt = constitution + "\n\n" + PLANNER_PROMPT_TEMPLATE.format(
             user_goal=user_goal,
             tools_manifest=tools_str,
             knowledge_manifest=knowledge_str,

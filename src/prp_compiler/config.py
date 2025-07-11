@@ -3,12 +3,14 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from pathlib import Path
 
-# Define default paths. These assume a 'agent_capabilities' directory
-# in the current working directory where the command is run.
-DEFAULT_TOOLS_PATH = Path("./agent_capabilities/tools")
-DEFAULT_KNOWLEDGE_PATH = Path("./agent_capabilities/knowledge")
-DEFAULT_SCHEMAS_PATH = Path("./agent_capabilities/schemas")
-DEFAULT_MANIFEST_PATH = Path("./component_manifest.json")
+# Define the project root as the grandparent of this file's directory.
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Define default paths relative to the project root.
+DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_capabilities/tools"
+DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_capabilities/knowledge"
+DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_capabilities/schemas"
+DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "component_manifest.json"
 
 
 def configure_gemini():

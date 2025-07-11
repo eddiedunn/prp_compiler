@@ -26,7 +26,7 @@ def test_synthesizer_prompt_format(synthesizer_agent):
     synthesizer_agent.mock_model.generate_content.return_value = mock_response
 
     # Call the method
-    result = synthesizer_agent.synthesize(schema_template, context)
+    result = synthesizer_agent.synthesize(schema_template, context, "")
 
     # Check that the result is what the mock returned
     assert result == expected_prp

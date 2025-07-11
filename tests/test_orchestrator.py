@@ -154,3 +154,21 @@ def test_resolve_dynamic_content_file_read_error(orchestrator):
         # Restore permissions to allow deletion
         os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)
         os.unlink(file_path)
+
+
+def test_resolve_dynamic_content_with_quoted_arguments(orchestrator):
+    """Test that shell commands with spaces and quotes are handled correctly."""
+    raw_context = '!git commit -m "feat: a test message"'
+    expected_command = ["git", "commit", "-m", "feat: a test message"]
+
+    with patch("subprocess.run") as mock_subprocess_run:
+        mock_subprocess_run.return_value.stdout = "Success"
+        orchestrator._resolve_dynamic_content(raw_context)
+        # Assert that subprocess.run was called with the correctly parsed list
+        mock_subprocess_run.assert_called_with(
+            expected_command,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )

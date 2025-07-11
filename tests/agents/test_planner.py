@@ -42,7 +42,7 @@ def test_planner_prompt_format(planner_agent, sample_manifests):
     mock_response.text = '{"tool_plan": [], "knowledge_plan": [], "schema_choice": ""}'
     planner_agent.mock_model.generate_content.return_value = mock_response
 
-    planner_agent.plan(user_goal, tools, knowledge, schemas)
+    planner_agent.plan(user_goal, tools, knowledge, schemas, "")
 
     # Check that generate_content was called once
     planner_agent.mock_model.generate_content.assert_called_once()
@@ -78,7 +78,7 @@ def test_planner_parses_response(planner_agent, sample_manifests):
     mock_response.text = mocked_json_str
     planner_agent.mock_model.generate_content.return_value = mock_response
 
-    result = planner_agent.plan(user_goal, tools, knowledge, schemas)
+    result = planner_agent.plan(user_goal, tools, knowledge, schemas, "")
 
     assert isinstance(result, ExecutionPlan)
     assert result.schema_choice == "schema1"

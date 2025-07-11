@@ -27,11 +27,11 @@ Now, generate the final PRP as a complete Markdown document.
 class SynthesizerAgent(BaseAgent):
     """Agent responsible for synthesizing the final PRP."""
 
-    def synthesize(self, schema_template: str, context: str) -> str:
+    def synthesize(self, schema_template: str, context: str, constitution: str) -> str:
         """
         Generates the final PRP by calling the LLM with the schema and context.
         """
-        prompt = SYNTHESIZER_PROMPT_TEMPLATE.format(
+        prompt = constitution + "\n\n" + SYNTHESIZER_PROMPT_TEMPLATE.format(
             schema_template=schema_template, context=context
         )
 
