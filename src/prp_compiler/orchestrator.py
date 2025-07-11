@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 from typing import List, Tuple
+from .config import ALLOWED_SHELL_COMMANDS
 from .models import ManifestItem, ExecutionPlan
 
 
@@ -83,6 +84,10 @@ class Orchestrator:
             try:
                 # Split command to avoid shell=True
                 command_parts = shlex.split(command_or_path)
+
+                # SECURITY: Check if the command is in the allowlist
+                if not command_parts or command_parts[0] not in ALLOWED_SHELL_COMMANDS:
+                    return f"[ERROR: Command '{command_parts[0] if command_parts else ''}' is not in the allowlist.]"
                 print(f"Executing command: {command_parts}")
                 result = subprocess.run(
                     command_parts,

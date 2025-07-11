@@ -57,7 +57,20 @@ def test_planner_prompt_format(planner_agent, sample_manifests):
     assert '"name": "schema1"' in prompt
 
 
-def test_planner_parses_response(planner_agent, sample_manifests):
+@pytest.mark.parametrize(
+    "mocked_json_str",
+    [
+        # Standard case with ```json
+        '```json\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\n```',
+        # Case with just ```
+        '```\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\n```',
+        # Case with no code fence
+        '{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}',
+        # Case with surrounding text
+        'Here is the plan:\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\nI hope this helps!',
+    ],
+)
+def test_planner_parses_response(planner_agent, sample_manifests, mocked_json_str):
     """Test 2: Assert that plan() correctly cleans, parses, and returns a valid ExecutionPlan."""
     user_goal = "Test goal"
     tools, knowledge, schemas = sample_manifests

@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 import sys
 
@@ -6,29 +5,7 @@ from src.prp_compiler.main import run
 from src.prp_compiler.models import ExecutionPlan, ToolPlanItem
 
 
-@pytest.fixture
-def temp_agent_dir(tmp_path):
-    """Creates a temporary agent_capabilities directory with dummy files."""
-    base_path = tmp_path / "agent_capabilities"
-    tools_path = base_path / "tools"
-    knowledge_path = base_path / "knowledge"
-    schemas_path = base_path / "schemas"
 
-    tools_path.mkdir(parents=True)
-    knowledge_path.mkdir(parents=True)
-    schemas_path.mkdir(parents=True)
-
-    (tools_path / "sample_tool.md").write_text(
-        "---\nname: sample_tool\ndescription: A test tool.\n---\nA tool."
-    )
-    (knowledge_path / "sample_knowledge.md").write_text(
-        "---\nname: sample_knowledge\ndescription: Some knowledge.\n---\nSome knowledge."
-    )
-    (schemas_path / "sample_schema.md").write_text(
-        "---\nname: sample_schema\ndescription: A schema template.\n---\nA schema template."
-    )
-
-    return base_path
 
 
 @patch("src.prp_compiler.main.PlannerAgent")
@@ -46,9 +23,9 @@ def test_end_to_end_integration(
 
     # Mock Planner to return a fixed plan
     fixed_plan = ExecutionPlan(
-        tool_plan=[ToolPlanItem(command_name="sample_tool", arguments="")],
-        knowledge_plan=["sample_knowledge"],
-        schema_choice="sample_schema",
+        tool_plan=[ToolPlanItem(command_name="test_tool", arguments="")],
+        knowledge_plan=["test_knowledge"],
+        schema_choice="test_schema",
     )
     mock_planner_instance.plan.return_value = fixed_plan
 
@@ -61,9 +38,9 @@ def test_end_to_end_integration(
     manifest_path = tmp_path / "manifest.json"
 
     # Correctly point to the subdirectories for each capability type
-    tools_dir = temp_agent_dir / "tools"
-    knowledge_dir = temp_agent_dir / "knowledge"
-    schemas_dir = temp_agent_dir / "schemas"
+    tools_dir = temp_agent_dir["tools"]
+    knowledge_dir = temp_agent_dir["knowledge"]
+    schemas_dir = temp_agent_dir["schemas"]
 
     sys.argv = [
         "prp_compiler",

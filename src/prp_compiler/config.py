@@ -10,7 +10,10 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_capabilities/tools"
 DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_capabilities/knowledge"
 DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_capabilities/schemas"
-DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "component_manifest.json"
+DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
+
+# Allowlist for shell commands to prevent arbitrary code execution.
+ALLOWED_SHELL_COMMANDS = ["git", "ls", "cat", "tree", "echo"]
 
 
 def configure_gemini():

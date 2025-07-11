@@ -9,7 +9,11 @@ from prp_compiler.config import (
     DEFAULT_TOOLS_PATH,
     PROJECT_ROOT,
 )
-from prp_compiler.manifests import generate_manifest, save_manifest
+from prp_compiler.manifests import (
+    generate_manifest,
+    save_manifests,
+    load_manifests,
+)
 from prp_compiler.agents.planner import PlannerAgent
 from prp_compiler.agents.synthesizer import SynthesizerAgent
 from prp_compiler.orchestrator import Orchestrator, load_constitution
@@ -58,24 +62,39 @@ def run():
         "--manifest-path",
         type=Path,
         default=DEFAULT_MANIFEST_PATH,
-        help="Path to save the generated manifest.",
+        help="Directory to save the generated manifests.",
+    )
+    parser.add_argument(
+        "--force-refresh",
+        action="store_true",
+        help="Force regeneration of all manifests.",
     )
     args = parser.parse_args()
 
-    print("1. Generating manifests...")
-    tools_manifest = generate_manifest(args.tools_path)
-    knowledge_manifest = generate_manifest(args.knowledge_path)
-    schemas_manifest = generate_manifest(args.schemas_path)
-    print("   Manifests generated.")
-
-    print("1.5. Saving manifests...")
-    save_manifest(
-        tools_manifest,
-        knowledge_manifest,
-        schemas_manifest,
-        args.manifest_path
+    manifest_files_exist = all(
+        (args.manifest_path / f).exists()
+        for f in ["tools_manifest.json", "knowledge_manifest.json", "schemas_manifest.json"]
     )
-    print(f"   Manifests saved to {args.manifest_path}")
+
+    if args.force_refresh or not manifest_files_exist:
+        print("1. Generating and saving manifests...")
+        tools_manifest = generate_manifest(args.tools_path)
+        knowledge_manifest = generate_manifest(args.knowledge_path)
+        schemas_manifest = generate_manifest(args.schemas_path)
+        save_manifests(
+            tools_manifest, knowledge_manifest, schemas_manifest, args.manifest_path
+        )
+        print(f"   Manifests saved to {args.manifest_path}")
+    else:
+        print("1. Loading manifests from cache...")
+        try:
+            tools_manifest, knowledge_manifest, schemas_manifest = load_manifests(
+                args.manifest_path
+            )
+            print(f"   Manifests loaded from {args.manifest_path}")
+        except IOError as e:
+            print(f"[ERROR] Failed to load manifests: {e}. Forcing refresh.")
+            return run() # Recurse to regenerate
 
     print("2. Loading constitution...")
     constitution = load_constitution(PROJECT_ROOT)

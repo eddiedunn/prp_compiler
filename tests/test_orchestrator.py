@@ -123,9 +123,11 @@ def test_assemble_context_schema_not_found(orchestrator):
 
 def test_resolve_dynamic_content_command_failure(orchestrator):
     """Test that a failed shell command returns an error message."""
-    raw_context = "! non_existent_command_12345"
+    # Use an allowed command that will fail.
+    command = "ls /this/path/should/not/exist"
+    raw_context = f"!{command}"
     result = orchestrator._resolve_dynamic_content(raw_context)
-    assert "[ERROR: Command 'non_existent_command_12345' failed:" in result
+    assert f"[ERROR: Command '{command}' failed:" in result
 
 
 def test_resolve_dynamic_content_file_not_found(orchestrator):
@@ -172,3 +174,27 @@ def test_resolve_dynamic_content_with_quoted_arguments(orchestrator):
             check=True,
             timeout=30,
         )
+
+
+def test_resolve_dynamic_content_disallowed_command(orchestrator):
+    """Test that a disallowed shell command is blocked."""
+    raw_context = "!rm -rf /"
+    result = orchestrator._resolve_dynamic_content(raw_context)
+    assert "[ERROR: Command 'rm' is not in the allowlist.]" in result
+
+
+def test_resolve_dynamic_content_allowed_command(orchestrator):
+    """Test that an allowed shell command is executed."""
+    raw_context = "!echo 'hello'"
+    with patch("subprocess.run") as mock_subprocess_run:
+        mock_subprocess_run.return_value.stdout = "hello"
+        result = orchestrator._resolve_dynamic_content(raw_context)
+        assert result == "hello"
+        mock_subprocess_run.assert_called_once()
+
+
+def test_resolve_dynamic_content_empty_command(orchestrator):
+    """Test that an empty command string is handled."""
+    raw_context = "! "
+    result = orchestrator._resolve_dynamic_content(raw_context)
+    assert "[ERROR: Command '' is not in the allowlist.]" in result

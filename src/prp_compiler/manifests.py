@@ -42,21 +42,46 @@ def generate_manifest(capability_path: Path) -> List[ManifestItem]:
     return manifest
 
 
-def save_manifest(
+def save_manifests(
     tools: List[ManifestItem],
     knowledge: List[ManifestItem],
     schemas: List[ManifestItem],
-    output_path: Path,
+    output_dir: Path,
 ):
-    """Saves all manifests to a single structured JSON file."""
-    manifest_data = {
-        "tools": [item.model_dump() for item in tools],
-        "knowledge": [item.model_dump() for item in knowledge],
-        "schemas": [item.model_dump() for item in schemas],
+    """Saves each manifest to a separate JSON file in the specified directory."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest_files = {
+        "tools_manifest.json": [item.model_dump() for item in tools],
+        "knowledge_manifest.json": [item.model_dump() for item in knowledge],
+        "schemas_manifest.json": [item.model_dump() for item in schemas],
     }
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(manifest_data, f, indent=2)
+
+    for filename, data in manifest_files.items():
+        with open(output_dir / filename, "w") as f:
+            json.dump(data, f, indent=2)
+
+def load_manifests(
+    manifest_dir: Path,
+) -> Tuple[List[ManifestItem], List[ManifestItem], List[ManifestItem]]:
+    """Loads all manifests from their separate JSON files."""
+    try:
+        with open(manifest_dir / "tools_manifest.json", "r") as f:
+            tools_data = json.load(f)
+            tools = [ManifestItem(**item) for item in tools_data]
+
+        with open(manifest_dir / "knowledge_manifest.json", "r") as f:
+            knowledge_data = json.load(f)
+            knowledge = [ManifestItem(**item) for item in knowledge_data]
+
+        with open(manifest_dir / "schemas_manifest.json", "r") as f:
+            schemas_data = json.load(f)
+            schemas = [ManifestItem(**item) for item in schemas_data]
+
+        return tools, knowledge, schemas
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        # If any file is missing or corrupt, we'll need to regenerate.
+        raise IOError(f"Could not load manifests from {manifest_dir}: {e}")
 
 
 

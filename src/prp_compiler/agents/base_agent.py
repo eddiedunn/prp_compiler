@@ -12,15 +12,18 @@ class BaseAgent:
     def _clean_json_response(self, text: str) -> str:
         """
         Cleans the raw text response from the LLM to extract a valid JSON object.
-        It removes markdown code fences (```json ... ```) and leading/trailing whitespace.
+        It handles markdown fences, optional 'json' specifiers, and surrounding text.
         """
-        # Find the start and end of the JSON block
-        match = re.search(r"```(json)?(.*)```", text, re.DOTALL)
+        # Match ```json, ```, or just the JSON object itself
+        match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})", text, re.DOTALL)
         if match:
-            # Extract the content within the fences
-            json_str = match.group(2).strip()
-        else:
-            # If no fences, assume the whole string is the JSON content
-            json_str = text.strip()
+            # Prioritize the content within fences if both groups are found
+            return match.group(1) or match.group(2)
 
-        return json_str
+        # As a fallback, try to find the first and last curly braces
+        try:
+            start = text.index('{')
+            end = text.rindex('}') + 1
+            return text[start:end]
+        except ValueError:
+            return text  # Return original text if no JSON object is found
