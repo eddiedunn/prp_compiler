@@ -1,9 +1,13 @@
 ---
-name: "Cc Hooks"
-description: "Hooks"
-arguments: []
+name: "Claude Code Hooks"
+description: "Documentation on how to customize and extend Claude Code's behavior by registering shell commands as hooks."
+arguments: ""
 keywords:
-  - placeholder
+  - hooks
+  - claude code
+  - customization
+  - shell
+  - automation
 ---
 
 # Hooks

@@ -1,13 +1,13 @@
 ---
-name: parallel-prp-creation
-description: Create multiple PRP variations in parallel for comparative analysis and implementation strategy validation
-arguments:
-  - name: prp_name
-    description: The base name for the PRP (e.g., "user-authentication")
-  - name: implementation_details
-    description: Core feature requirements and context
-  - name: number_of_parallel_prps
-    description: Number of parallel PRP variations to create (recommended 2-5)
+name: "Parallel PRP Creation"
+description: "Create multiple PRP variations in parallel for comparative analysis and implementation strategy validation."
+arguments: "$ARGUMENTS"
+keywords:
+  - prp
+  - parallel
+  - experimental
+  - rapid development
+  - strategy
 ---
 
 # Parallel PRP Creation - Multiple Implementation Strategies

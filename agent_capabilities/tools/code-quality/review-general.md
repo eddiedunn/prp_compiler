@@ -1,9 +1,13 @@
 ---
-name: "Review General"
-description: "Code Review"
-arguments: []
+name: "General Code Review"
+description: "Perform a comprehensive code review of the current changes or specified files, focusing on code quality, Pydantic v2 patterns, security, and structure."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - code review
+  - quality
+  - pydantic
+  - security
+  - pep8
 ---
 
 # Code Review

@@ -1,9 +1,13 @@
 ---
-name: "Task List Init"
-description: "list of tasks to be completed to fullfill the PRP in the order they should be completed using infomration dense keywords"
-arguments: []
+name: "Initialize Task List"
+description: "Create a comprehensive task list in PRPs/checklist.md for building a project based on a high-level description."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - task
+  - list
+  - checklist
+  - initialize
+  - prp
 ---
 
 claude

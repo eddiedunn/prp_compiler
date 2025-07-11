@@ -1,9 +1,13 @@
 ---
-name: "Prp Task Create"
-description: "Create TASK PRP (Advanced)"
-arguments: []
+name: "Create Task PRP"
+description: "Generate a comprehensive task list for focused changes with validation, based on a high-level task description."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - task
+  - create
+  - checklist
+  - validation
 ---
 
 # Create TASK PRP (Advanced)

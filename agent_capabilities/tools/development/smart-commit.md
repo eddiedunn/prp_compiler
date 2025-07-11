@@ -1,7 +1,12 @@
 ---
-name: commit
-description: Analyze changes and create a smart git commit
-arguments: "Additional instructions for the commit"
+name: "Smart Git Commit"
+description: "Analyze staged and unstaged changes and create a smart git commit following conventional commit standards."
+arguments: "$ARGUMENTS"
+keywords:
+  - git
+  - commit
+  - conventional commits
+  - smart
 ---
 
 additional instructions = $ARGUMENTS

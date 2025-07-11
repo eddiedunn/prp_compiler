@@ -1,9 +1,13 @@
 ---
-name: "Hackathon Research"
-description: "Hackathon Multi-Option Research"
-arguments: []
+name: "Hackathon Multi-Option Research"
+description: "Rapidly evaluate multiple solution approaches for hackathon challenges using massive parallel research (15 concurrent agents)."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - hackathon
+  - research
+  - parallel
+  - experimental
+  - rapid development
 ---
 
 # Hackathon Multi-Option Research

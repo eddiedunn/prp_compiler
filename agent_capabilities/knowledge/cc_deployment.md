@@ -1,9 +1,13 @@
 ---
-name: "Cc Deployment"
-description: "Enterprise deployment overview"
-arguments: []
+name: "Enterprise Deployment Overview"
+description: "An overview of integrating Claude Code with third-party services like Amazon Bedrock and Google Vertex AI for enterprise deployments."
+arguments: ""
 keywords:
-  - placeholder
+  - deployment
+  - enterprise
+  - bedrock
+  - vertex ai
+  - claude code
 ---
 
 # Enterprise deployment overview

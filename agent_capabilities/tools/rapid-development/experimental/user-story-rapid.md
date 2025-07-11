@@ -1,9 +1,13 @@
 ---
-name: "User Story Rapid"
-description: "Analyze User Story and Create Implementation Plan"
-arguments: []
+name: "Rapid User Story Implementation Plan"
+description: "Analyze a user story and create a detailed implementation plan for separate backend and frontend projects based on the specified tech stack."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - user story
+  - implementation plan
+  - rapid development
+  - frontend
+  - backend
 ---
 
 # Analyze User Story and Create Implementation Plan

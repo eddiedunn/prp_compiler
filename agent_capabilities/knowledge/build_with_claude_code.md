@@ -1,7 +1,7 @@
 ---
 name: "Build with Claude Code"
 description: "Learn how to add Claude Code to your favorite IDE and leverage its features for enhanced coding workflows."
-arguments: []
+arguments: ""
 keywords:
   - IDE
   - Claude Code

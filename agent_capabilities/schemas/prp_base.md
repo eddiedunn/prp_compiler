@@ -1,12 +1,13 @@
 ---
-name: "Prp Base"
-description: "Purpose"
-arguments: []
-keywords:
-  - placeholder
----
-
 name: "Base PRP Template v2 - Context-Rich with Validation Loops"
+description: "A template optimized for AI agents to implement features with sufficient context and self-validation capabilities to achieve working code through iterative refinement."
+arguments: ""
+keywords:
+  - prp
+  - template
+  - validation
+  - context
+---
 description: |
 
 ## Purpose

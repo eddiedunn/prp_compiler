@@ -1,9 +1,14 @@
 ---
-name: "Ts Review Staged Unstaged"
-description: "Review Focus Areas"
-arguments: []
+name: "ts_review_staged_unstaged"
+description: "Reviews staged and unstaged TypeScript/JavaScript files, checking diffs for changes and focusing on code quality."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - typescript
+  - javascript
+  - review
+  - git
+  - staged
+  - unstaged
 ---
 
 List and review any files in the staging area, both staged and unstaged.

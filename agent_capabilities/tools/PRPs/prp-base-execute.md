@@ -1,9 +1,13 @@
 ---
-name: "Prp Base Execute"
-description: "Execute BASE PRP"
-arguments: []
+name: "Execute Base PRP"
+description: "Implement a feature by executing a given Base PRP file, including planning, implementation, and validation."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - base
+  - execute
+  - implement
+  - validate
 ---
 
 # Execute BASE PRP

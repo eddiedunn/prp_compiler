@@ -1,9 +1,14 @@
 ---
-name: "Review Staged Unstaged"
-description: "Review Focus Areas"
-arguments: []
+name: "Review Staged and Unstaged Files"
+description: "Review all staged and unstaged files, checking the diff for each. Focus on code quality, Pydantic v2 patterns, security, structure, and linting."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - code review
+  - git
+  - staged
+  - unstaged
+  - quality
+  - security
 ---
 
 List and review any files in the staging area, both staged and unstaged.

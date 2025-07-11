@@ -1,9 +1,13 @@
 ---
-name: "Ts Execute Base Prp"
-description: "Execute BASE PRP"
-arguments: []
+name: "ts_execute_base_prp"
+description: "Implements a TypeScript/JavaScript feature based on a specified Product Requirements Prompt (PRP) file."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - typescript
+  - javascript
+  - prp
+  - implementation
+  - execution
 ---
 
 # Execute BASE PRP

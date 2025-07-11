@@ -1,5 +1,14 @@
 ---
-Intended for Jira/GitHub tasks or other task management systems to break down and plan the implementation.
+name: "Task Template v2 - Information Dense with Validation Loops"
+description: "A template for creating concise, executable tasks with embedded context and validation commands, suitable for task management systems like Jira or GitHub."
+arguments: ""
+keywords:
+  - prp
+  - task
+  - template
+  - validation
+  - jira
+  - github
 ---
 
 # Task Template v2 - Information Dense with Validation Loops

@@ -1,9 +1,13 @@
 ---
-name: "Prp Analyze Run"
-description: "Analyze PRP Results"
-arguments: []
+name: "Analyze PRP Run Results"
+description: "Post-execution analysis of a PRP implementation to capture lessons learned, success metrics, and template improvements."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - analyze
+  - results
+  - metrics
+  - experimental
 ---
 
 # Analyze PRP Results

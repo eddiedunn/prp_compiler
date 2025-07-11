@@ -1,9 +1,12 @@
 ---
-name: "Prime Core"
-description: "Prime Context for Claude Code"
-arguments: []
+name: "Prime Core Context"
+description: "Prime Claude Code's context with core knowledge about the project by reading key files and explaining the project structure, purpose, and goals."
+arguments: ""
 keywords:
-  - placeholder
+  - context
+  - prime
+  - project overview
+  - onboarding
 ---
 
 > Command for priming Claude Code with core knowledge about your project

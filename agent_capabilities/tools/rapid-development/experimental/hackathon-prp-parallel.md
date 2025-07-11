@@ -1,9 +1,13 @@
 ---
-command: hackathon-prp-parallel
-description: Generate and execute a hackathon implementation using massive parallel agents for maximum speed
-arguments:
-  - name: challenge
-    description: The hackathon challenge or user story to implement
+name: "Hackathon PRP Parallel Workflow"
+description: "Generate and execute a hackathon implementation using massive parallel agents for maximum speed."
+arguments: "$ARGUMENTS"
+keywords:
+  - hackathon
+  - prp
+  - parallel
+  - experimental
+  - rapid development
 ---
 
 # Hackathon PRP Parallel Workflow - Maximum Speed Edition

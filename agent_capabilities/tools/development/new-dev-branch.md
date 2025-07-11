@@ -1,9 +1,12 @@
 ---
-name: "New Dev Branch"
-description: "Instructions"
-arguments: []
+name: "Create New Development Branch"
+description: "Create a new development branch from the 'develop' branch for a given feature or task."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - git
+  - branch
+  - develop
+  - feature
 ---
 
 Lets start working on a new branch from develop

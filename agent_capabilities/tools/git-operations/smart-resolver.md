@@ -1,9 +1,13 @@
 ---
-name: "Smart Resolver"
-description: "Pre-resolution analysis:"
-arguments: []
+name: "Smart Git Conflict Resolver"
+description: "Perform an intelligent merge conflict resolution with a deep understanding of the codebase, analyzing branch history and conflict types."
+arguments: ""
 keywords:
-  - placeholder
+  - git
+  - merge
+  - conflict
+  - resolve
+  - smart
 ---
 
 Perform an intelligent merge conflict resolution with deep understanding of our codebase.

@@ -1,7 +1,7 @@
 ---
 name: "Claude Code Slash Commands"
 description: "Overview of built-in and custom slash commands for controlling Claude Code during interactive sessions."
-arguments: []
+arguments: ""
 keywords:
   - slash commands
   - Claude Code

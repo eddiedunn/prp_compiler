@@ -1,9 +1,12 @@
 ---
-name: "Cc Monitoring"
-description: "Monitoring"
-arguments: []
+name: "Claude Code Monitoring"
+description: "Learn how to enable and configure OpenTelemetry for Claude Code for monitoring and observability."
+arguments: ""
 keywords:
-  - placeholder
+  - monitoring
+  - opentelemetry
+  - otel
+  - claude code
 ---
 
 # Monitoring

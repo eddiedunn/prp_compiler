@@ -1,9 +1,12 @@
 ---
-name: "Prp Validate"
-description: "Validate PRP"
-arguments: []
+name: "Pre-flight PRP Validation"
+description: "Pre-flight validation of a PRP to ensure all context and dependencies are available before execution."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - validate
+  - pre-flight
+  - experimental
 ---
 
 # Validate PRP

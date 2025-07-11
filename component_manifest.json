@@ -1,0 +1,665 @@
+{
+  "tools": [
+    {
+      "name": "Smart Git Commit",
+      "description": "Analyze staged and unstaged changes and create a smart git commit following conventional commit standards.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "git",
+        "commit",
+        "conventional commits",
+        "smart"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/smart-commit.md"
+    },
+    {
+      "name": "Prime Core Context",
+      "description": "Prime Claude Code's context with core knowledge about the project by reading key files and explaining the project structure, purpose, and goals.",
+      "arguments": "",
+      "keywords": [
+        "context",
+        "prime",
+        "project overview",
+        "onboarding"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/prime-core.md"
+    },
+    {
+      "name": "Create Pull Request",
+      "description": "Create a well-structured pull request with a proper description and context, following best practices for commits and branch management.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "git",
+        "pull request",
+        "pr",
+        "commit",
+        "branch"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/create-pr.md"
+    },
+    {
+      "name": "Debug and Root Cause Analysis",
+      "description": "Systematically debug and diagnose a reported problem, find the root cause, and propose a fix.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "debug",
+        "rca",
+        "bug",
+        "issue",
+        "error"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/debug-RCA.md"
+    },
+    {
+      "name": "Create New Development Branch",
+      "description": "Create a new development branch from the 'develop' branch for a given feature or task.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "git",
+        "branch",
+        "develop",
+        "feature"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/new-dev-branch.md"
+    },
+    {
+      "name": "New Developer Onboarding Analysis",
+      "description": "Perform a comprehensive onboarding analysis for a new developer, covering project overview, repository structure, setup, key components, and development workflow.",
+      "arguments": "",
+      "keywords": [
+        "onboarding",
+        "new developer",
+        "documentation",
+        "project overview",
+        "setup"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/development/onboarding.md"
+    },
+    {
+      "name": "ts_review_general",
+      "description": "Performs a comprehensive review of a TypeScript/Astro codebase, focusing on architecture, patterns, and best practices.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "typescript",
+        "astro",
+        "review",
+        "architecture",
+        "best-practices"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/typescript/TS-review-general.md"
+    },
+    {
+      "name": "ts_review_staged_unstaged",
+      "description": "Reviews staged and unstaged TypeScript/JavaScript files, checking diffs for changes and focusing on code quality.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "typescript",
+        "javascript",
+        "review",
+        "git",
+        "staged",
+        "unstaged"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/typescript/TS-review-staged-unstaged.md"
+    },
+    {
+      "name": "ts_create_base_prp",
+      "description": "Generates a complete Product Requirements Prompt (PRP) for a TypeScript/JavaScript feature, including deep research and context.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "typescript",
+        "javascript",
+        "prp",
+        "research",
+        "planning"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/typescript/TS-create-base-prp.md"
+    },
+    {
+      "name": "ts_execute_base_prp",
+      "description": "Implements a TypeScript/JavaScript feature based on a specified Product Requirements Prompt (PRP) file.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "typescript",
+        "javascript",
+        "prp",
+        "implementation",
+        "execution"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/typescript/TS-execute-base-prp.md"
+    },
+    {
+      "name": "Simple Refactor Check",
+      "description": "Perform a quick refactoring check on Python code, focusing on vertical slice boundaries, function complexity, type safety, and single responsibility. Generates a refactor_plan.md.",
+      "arguments": "",
+      "keywords": [
+        "refactor",
+        "code quality",
+        "python",
+        "pydantic",
+        "single responsibility"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/code-quality/refactor-simple.md"
+    },
+    {
+      "name": "General Code Review",
+      "description": "Perform a comprehensive code review of the current changes or specified files, focusing on code quality, Pydantic v2 patterns, security, and structure.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "code review",
+        "quality",
+        "pydantic",
+        "security",
+        "pep8"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/code-quality/review-general.md"
+    },
+    {
+      "name": "Review Staged and Unstaged Files",
+      "description": "Review all staged and unstaged files, checking the diff for each. Focus on code quality, Pydantic v2 patterns, security, structure, and linting.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "code review",
+        "git",
+        "staged",
+        "unstaged",
+        "quality",
+        "security"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/code-quality/review-staged-unstaged.md"
+    },
+    {
+      "name": "Hackathon Multi-Option Research",
+      "description": "Rapidly evaluate multiple solution approaches for hackathon challenges using massive parallel research (15 concurrent agents).",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "hackathon",
+        "research",
+        "parallel",
+        "experimental",
+        "rapid development"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/hackathon-research.md"
+    },
+    {
+      "name": "Analyze PRP Run Results",
+      "description": "Post-execution analysis of a PRP implementation to capture lessons learned, success metrics, and template improvements.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "analyze",
+        "results",
+        "metrics",
+        "experimental"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/prp-analyze-run.md"
+    },
+    {
+      "name": "Rapid User Story Implementation Plan",
+      "description": "Analyze a user story and create a detailed implementation plan for separate backend and frontend projects based on the specified tech stack.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "user story",
+        "implementation plan",
+        "rapid development",
+        "frontend",
+        "backend"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/user-story-rapid.md"
+    },
+    {
+      "name": "Pre-flight PRP Validation",
+      "description": "Pre-flight validation of a PRP to ensure all context and dependencies are available before execution.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "validate",
+        "pre-flight",
+        "experimental"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/prp-validate.md"
+    },
+    {
+      "name": "Create Planning PRP with Parallel Research",
+      "description": "Transform rough ideas into comprehensive PRDs using parallel research agents for maximum efficiency and depth.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "planning",
+        "parallel",
+        "research",
+        "experimental"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/create-planning-parallel.md"
+    },
+    {
+      "name": "Parallel PRP Creation",
+      "description": "Create multiple PRP variations in parallel for comparative analysis and implementation strategy validation.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "parallel",
+        "experimental",
+        "rapid development",
+        "strategy"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/parallel-prp-creation.md"
+    },
+    {
+      "name": "Create Base PRP with Parallel Research",
+      "description": "Generate a comprehensive PRP using parallel research agents for maximum context gathering efficiency and depth.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "base",
+        "parallel",
+        "research",
+        "experimental"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/create-base-prp-parallel.md"
+    },
+    {
+      "name": "Hackathon PRP Parallel Workflow",
+      "description": "Generate and execute a hackathon implementation using massive parallel agents for maximum speed.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "hackathon",
+        "prp",
+        "parallel",
+        "experimental",
+        "rapid development"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/rapid-development/experimental/hackathon-prp-parallel.md"
+    },
+    {
+      "name": "Create Spec PRP",
+      "description": "Generate a comprehensive specification-driven PRP with clear transformation goals from a high-level specification.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "spec",
+        "create",
+        "specification",
+        "transformation"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-spec-create.md"
+    },
+    {
+      "name": "Create Planning PRP",
+      "description": "Transform rough ideas into comprehensive PRDs with rich visual documentation, based on deep research.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "planning",
+        "create",
+        "prd",
+        "research",
+        "visual"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-planning-create.md"
+    },
+    {
+      "name": "Execute Task PRP",
+      "description": "Run through a task list from an existing TASK PRP, validating each step.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "task",
+        "execute",
+        "checklist",
+        "validate"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-task-execute.md"
+    },
+    {
+      "name": "Create Task PRP",
+      "description": "Generate a comprehensive task list for focused changes with validation, based on a high-level task description.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "task",
+        "create",
+        "checklist",
+        "validation"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-task-create.md"
+    },
+    {
+      "name": "Create Base PRP",
+      "description": "Generate a complete PRP for feature implementation with deep research, rich context, and self-validation loops.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "base",
+        "create",
+        "research",
+        "context"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-base-create.md"
+    },
+    {
+      "name": "Initialize Task List",
+      "description": "Create a comprehensive task list in PRPs/checklist.md for building a project based on a high-level description.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "task",
+        "list",
+        "checklist",
+        "initialize",
+        "prp"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/task-list-init.md"
+    },
+    {
+      "name": "Execute Spec PRP",
+      "description": "Implement a specification by executing an existing SPEC PRP, including planning, task execution, and validation.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "spec",
+        "execute",
+        "implement",
+        "validate"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-spec-execute.md"
+    },
+    {
+      "name": "Define API Contract",
+      "description": "Define a detailed API contract between the backend and frontend for a given feature, including RESTful endpoints and DTOs.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "api",
+        "contract",
+        "rest",
+        "dto",
+        "backend",
+        "frontend"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/api-contract-define.md"
+    },
+    {
+      "name": "Execute Base PRP",
+      "description": "Implement a feature by executing a given Base PRP file, including planning, implementation, and validation.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "base",
+        "execute",
+        "implement",
+        "validate"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/PRPs/prp-base-execute.md"
+    },
+    {
+      "name": "General Git Conflict Resolver",
+      "description": "Intelligently resolve all Git merge conflicts in the current repository by analyzing both versions, combining changes, and verifying the result.",
+      "arguments": "",
+      "keywords": [
+        "git",
+        "merge",
+        "conflict",
+        "resolve",
+        "version control"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/git-operations/conflict-resolver-general.md"
+    },
+    {
+      "name": "Specific Git Conflict Resolver",
+      "description": "Resolve Git merge conflicts based on a specified strategy (e.g., safe, aggressive, ours, theirs) and for specific files if provided.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "git",
+        "merge",
+        "conflict",
+        "resolve",
+        "strategy"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/git-operations/conflict-resolver-specific.md"
+    },
+    {
+      "name": "Smart Git Conflict Resolver",
+      "description": "Perform an intelligent merge conflict resolution with a deep understanding of the codebase, analyzing branch history and conflict types.",
+      "arguments": "",
+      "keywords": [
+        "git",
+        "merge",
+        "conflict",
+        "resolve",
+        "smart"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/tools/git-operations/smart-resolver.md"
+    }
+  ],
+  "knowledge": [
+    {
+      "name": "Claude Code Monitoring",
+      "description": "Learn how to enable and configure OpenTelemetry for Claude Code for monitoring and observability.",
+      "arguments": "",
+      "keywords": [
+        "monitoring",
+        "opentelemetry",
+        "otel",
+        "claude code"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_monitoring.md"
+    },
+    {
+      "name": "Manage Claude's Memory",
+      "description": "Learn how to manage Claude Code's memory across sessions with different memory locations and best practices.",
+      "arguments": "",
+      "keywords": [
+        "memory",
+        "claude.md",
+        "context",
+        "session",
+        "claude code"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_memory.md"
+    },
+    {
+      "name": "Enterprise Deployment Overview",
+      "description": "An overview of integrating Claude Code with third-party services like Amazon Bedrock and Google Vertex AI for enterprise deployments.",
+      "arguments": "",
+      "keywords": [
+        "deployment",
+        "enterprise",
+        "bedrock",
+        "vertex ai",
+        "claude code"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_deployment.md"
+    },
+    {
+      "name": "Troubleshooting Claude Code",
+      "description": "Discover solutions to common issues with Claude Code installation and usage.",
+      "arguments": "",
+      "keywords": [
+        "troubleshooting",
+        "claude code",
+        "installation",
+        "errors",
+        "permissions"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_troubleshoot.md"
+    },
+    {
+      "name": "Claude Code Overview",
+      "description": "An overview of Claude Code, the agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster through natural language commands.",
+      "arguments": "",
+      "keywords": [
+        "claude code",
+        "overview",
+        "agentic coding",
+        "cli"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_overview.md"
+    },
+    {
+      "name": "Model Context Protocol (MCP)",
+      "description": "Learn how to set up the Model Context Protocol (MCP) with Claude Code to enable access to external tools and data sources.",
+      "arguments": "",
+      "keywords": [
+        "mcp",
+        "model context protocol",
+        "claude code",
+        "tools",
+        "integration"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_mcp.md"
+    },
+    {
+      "name": "Claude Code Hooks",
+      "description": "Documentation on how to customize and extend Claude Code's behavior by registering shell commands as hooks.",
+      "arguments": "",
+      "keywords": [
+        "hooks",
+        "claude code",
+        "customization",
+        "shell",
+        "automation"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_hooks.md"
+    },
+    {
+      "name": "Claude Code Identity and Access Management",
+      "description": "How to configure user authentication, authorization, and access controls for Claude Code in your organization.",
+      "arguments": "",
+      "keywords": [
+        "authentication",
+        "authorization",
+        "access control",
+        "Claude Code",
+        "IAM"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_administration.md"
+    },
+    {
+      "name": "Claude Code Settings",
+      "description": "Documentation on how to configure Claude Code with global and project-level settings, and environment variables.",
+      "arguments": "",
+      "keywords": [
+        "settings",
+        "configuration",
+        "claude code",
+        "json",
+        "environment variables"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_settings.md"
+    },
+    {
+      "name": "Build with Claude Code",
+      "description": "Learn how to add Claude Code to your favorite IDE and leverage its features for enhanced coding workflows.",
+      "arguments": "",
+      "keywords": [
+        "IDE",
+        "Claude Code",
+        "Integration",
+        "Setup",
+        "Features"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/build_with_claude_code.md"
+    },
+    {
+      "name": "Claude Code GitHub Actions",
+      "description": "Learn about integrating Claude Code into your development workflow with Claude Code GitHub Actions.",
+      "arguments": "",
+      "keywords": [
+        "github actions",
+        "claude code",
+        "automation",
+        "ci/cd"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_github_actions.md"
+    },
+    {
+      "name": "Claude Code Slash Commands",
+      "description": "Overview of built-in and custom slash commands for controlling Claude Code during interactive sessions.",
+      "arguments": "",
+      "keywords": [
+        "slash commands",
+        "Claude Code",
+        "commands",
+        "interactive"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_commands.md"
+    },
+    {
+      "name": "Claude Code Common Workflows",
+      "description": "Learn about common workflows and best practices for using Claude Code effectively.",
+      "arguments": "",
+      "keywords": [
+        "workflows",
+        "Claude Code",
+        "best practices",
+        "usage"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/knowledge/cc_common_workflows.md"
+    }
+  ],
+  "schemas": [
+    {
+      "name": "Base PRP Template v2 - Context-Rich with Validation Loops",
+      "description": "A template optimized for AI agents to implement features with sufficient context and self-validation capabilities to achieve working code through iterative refinement.",
+      "arguments": "",
+      "keywords": [
+        "prp",
+        "template",
+        "validation",
+        "context"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/schemas/prp_base.md"
+    },
+    {
+      "name": "Planning PRP Template - PRD Generation with Diagrams",
+      "description": "A template to generate comprehensive Product Requirements Documents (PRDs) with visual diagrams, turning rough ideas into detailed specifications.",
+      "arguments": "$ARGUMENTS",
+      "keywords": [
+        "prp",
+        "planning",
+        "prd",
+        "diagrams",
+        "template"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/schemas/prp_planning.md"
+    },
+    {
+      "name": "Specification Template",
+      "description": "A template to ingest high and mid-level objectives and generate code based on low-level tasks. Inspired by IndyDevDan.",
+      "arguments": "",
+      "keywords": [
+        "prp",
+        "spec",
+        "template",
+        "objectives",
+        "tasks"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/schemas/prp_spec.md"
+    },
+    {
+      "name": "Base PRP Template v2 - TypeScript",
+      "description": "A template optimized for AI agents to implement TypeScript-based features with sufficient context and self-validation capabilities.",
+      "arguments": "",
+      "keywords": [
+        "typescript",
+        "prp",
+        "template",
+        "validation"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/schemas/prp_base_typescript.md"
+    },
+    {
+      "name": "Task Template v2 - Information Dense with Validation Loops",
+      "description": "A template for creating concise, executable tasks with embedded context and validation commands, suitable for task management systems like Jira or GitHub.",
+      "arguments": "",
+      "keywords": [
+        "prp",
+        "task",
+        "template",
+        "validation",
+        "jira",
+        "github"
+      ],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/agent_capabilities/schemas/prp_task.md"
+    }
+  ]
+}

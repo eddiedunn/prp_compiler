@@ -1,9 +1,13 @@
 ---
-name: "Prp Task Execute"
-description: "Execute TASK PRP"
-arguments: []
+name: "Execute Task PRP"
+description: "Run through a task list from an existing TASK PRP, validating each step."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - task
+  - execute
+  - checklist
+  - validate
 ---
 
 # Execute TASK PRP

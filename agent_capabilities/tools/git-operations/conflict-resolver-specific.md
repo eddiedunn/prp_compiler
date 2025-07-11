@@ -1,9 +1,13 @@
 ---
-name: "Conflict Resolver Specific"
-description: "Resolution strategy based on arguments:"
-arguments: []
+name: "Specific Git Conflict Resolver"
+description: "Resolve Git merge conflicts based on a specified strategy (e.g., safe, aggressive, ours, theirs) and for specific files if provided."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - git
+  - merge
+  - conflict
+  - resolve
+  - strategy
 ---
 
 You are an expert at resolving Git merge conflicts. $ARGUMENTS

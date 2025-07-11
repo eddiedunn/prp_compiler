@@ -1,12 +1,14 @@
 ---
-name: "Prp Planning"
-description: "Purpose"
-arguments: []
-keywords:
-  - placeholder
----
-
 name: "Planning PRP Template - PRD Generation with Diagrams"
+description: "A template to generate comprehensive Product Requirements Documents (PRDs) with visual diagrams, turning rough ideas into detailed specifications."
+arguments: "$ARGUMENTS"
+keywords:
+  - prp
+  - planning
+  - prd
+  - diagrams
+  - template
+---
 description: |
 
 ## Purpose

@@ -1,9 +1,13 @@
 ---
-name: "Create Base Prp Parallel"
-description: "Create BASE PRP with Parallel Research"
-arguments: []
+name: "Create Base PRP with Parallel Research"
+description: "Generate a comprehensive PRP using parallel research agents for maximum context gathering efficiency and depth."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - base
+  - parallel
+  - research
+  - experimental
 ---
 
 # Create BASE PRP with Parallel Research

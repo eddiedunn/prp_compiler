@@ -1,9 +1,13 @@
 ---
-name: "Cc Troubleshoot"
-description: "Troubleshooting"
-arguments: []
+name: "Troubleshooting Claude Code"
+description: "Discover solutions to common issues with Claude Code installation and usage."
+arguments: ""
 keywords:
-  - placeholder
+  - troubleshooting
+  - claude code
+  - installation
+  - errors
+  - permissions
 ---
 
 # Troubleshooting

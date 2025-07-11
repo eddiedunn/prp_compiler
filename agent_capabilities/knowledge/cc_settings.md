@@ -1,9 +1,13 @@
 ---
-name: "Cc Settings"
-description: "Claude Code settings"
-arguments: []
+name: "Claude Code Settings"
+description: "Documentation on how to configure Claude Code with global and project-level settings, and environment variables."
+arguments: ""
 keywords:
-  - placeholder
+  - settings
+  - configuration
+  - claude code
+  - json
+  - environment variables
 ---
 
 # Claude Code settings

@@ -1,12 +1,13 @@
 ---
-name: "Prp Base Typescript"
-description: "Purpose"
-arguments: []
+name: "Base PRP Template v2 - TypeScript"
+description: "A template optimized for AI agents to implement TypeScript-based features with sufficient context and self-validation capabilities."
+arguments: ""
 keywords:
-  - placeholder
+  - typescript
+  - prp
+  - template
+  - validation
 ---
-
-name: "Base PRP Template v2 - Context-Rich with Validation Loops"
 description: |
 
 ## Purpose

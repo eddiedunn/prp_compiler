@@ -1,9 +1,13 @@
 ---
-name: "Ts Review General"
-description: "General TypeScript/Astro Codebase Review"
-arguments: []
+name: "ts_review_general"
+description: "Performs a comprehensive review of a TypeScript/Astro codebase, focusing on architecture, patterns, and best practices."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - typescript
+  - astro
+  - review
+  - architecture
+  - best-practices
 ---
 
 # General TypeScript/Astro Codebase Review

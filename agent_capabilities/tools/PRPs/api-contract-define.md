@@ -1,9 +1,14 @@
 ---
-name: "Api Contract Define"
-description: "Define API Contract Between Backend and Frontend"
-arguments: []
+name: "Define API Contract"
+description: "Define a detailed API contract between the backend and frontend for a given feature, including RESTful endpoints and DTOs."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - api
+  - contract
+  - rest
+  - dto
+  - backend
+  - frontend
 ---
 
 # Define API Contract Between Backend and Frontend

@@ -1,9 +1,13 @@
 ---
-name: "Conflict Resolver General"
-description: "Step-by-step process:"
-arguments: []
+name: "General Git Conflict Resolver"
+description: "Intelligently resolve all Git merge conflicts in the current repository by analyzing both versions, combining changes, and verifying the result."
+arguments: ""
 keywords:
-  - placeholder
+  - git
+  - merge
+  - conflict
+  - resolve
+  - version control
 ---
 
 You are an expert at resolving Git merge conflicts intelligently. Your task is to resolve all merge conflicts in the current repository.

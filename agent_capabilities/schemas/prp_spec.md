@@ -1,9 +1,13 @@
 ---
-name: "Prp Spec"
-description: "Specification Template (prompt inspired by IndyDevDan)"
-arguments: []
+name: "Specification Template"
+description: "A template to ingest high and mid-level objectives and generate code based on low-level tasks. Inspired by IndyDevDan."
+arguments: ""
 keywords:
-  - placeholder
+  - prp
+  - spec
+  - template
+  - objectives
+  - tasks
 ---
 
 # Specification Template (prompt inspired by IndyDevDan)

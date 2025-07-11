@@ -1,9 +1,13 @@
 ---
-name: "Onboarding"
-description: "1. Project Overview"
-arguments: []
+name: "New Developer Onboarding Analysis"
+description: "Perform a comprehensive onboarding analysis for a new developer, covering project overview, repository structure, setup, key components, and development workflow."
+arguments: ""
 keywords:
-  - placeholder
+  - onboarding
+  - new developer
+  - documentation
+  - project overview
+  - setup
 ---
 
 Please perform a comprehensive onboarding analysis for a new developer joining this project. Execute the following steps:

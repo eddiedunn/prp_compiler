@@ -6,12 +6,12 @@ from prp_compiler.agents.planner import PlannerAgent
 from prp_compiler.agents.synthesizer import SynthesizerAgent
 from prp_compiler.orchestrator import Orchestrator
 
-# Define default paths. These assume a 'capabilities' directory
+# Define default paths. These assume a 'agent_capabilities' directory
 # in the current working directory where the command is run.
-DEFAULT_TOOLS_PATH = Path("./capabilities/tools")
-DEFAULT_KNOWLEDGE_PATH = Path("./capabilities/knowledge")
-DEFAULT_SCHEMAS_PATH = Path("./capabilities/schemas")
-DEFAULT_MANIFEST_PATH = Path("./manifest.json")
+DEFAULT_TOOLS_PATH = Path("./agent_capabilities/tools")
+DEFAULT_KNOWLEDGE_PATH = Path("./agent_capabilities/knowledge")
+DEFAULT_SCHEMAS_PATH = Path("./agent_capabilities/schemas")
+DEFAULT_MANIFEST_PATH = Path("./component_manifest.json")
 
 def run():
     """

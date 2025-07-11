@@ -1,17 +1,22 @@
 import json
+import re
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any
 from .models import ManifestItem
 
+# Regex to find YAML frontmatter at the start of a file
+FRONTMATTER_RE = re.compile(r'^---\s*$(.*?)^---\s*$', re.S | re.M)
+
 def _parse_frontmatter(file_path: Path) -> Dict[str, Any]:
-    """Parses the YAML frontmatter from a file."""
+    """Parses the YAML frontmatter from a file using a robust regex."""
     try:
         text = file_path.read_text()
-        parts = text.split('---')
-        if len(parts) < 3:
+        match = FRONTMATTER_RE.match(text)
+        if not match:
             return {}
-        frontmatter = yaml.safe_load(parts[1])
+        frontmatter_str = match.group(1)
+        frontmatter = yaml.safe_load(frontmatter_str)
         return frontmatter if isinstance(frontmatter, dict) else {}
     except (IOError, yaml.YAMLError):
         return {}

@@ -1,9 +1,12 @@
 ---
-name: "Cc Github Actions"
-description: "Claude Code GitHub Actions"
-arguments: []
+name: "Claude Code GitHub Actions"
+description: "Learn about integrating Claude Code into your development workflow with Claude Code GitHub Actions."
+arguments: ""
 keywords:
-  - placeholder
+  - github actions
+  - claude code
+  - automation
+  - ci/cd
 ---
 
 # Claude Code GitHub Actions

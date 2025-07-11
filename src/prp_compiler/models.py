@@ -15,4 +15,4 @@ class ToolPlanItem(BaseModel):
 class ExecutionPlan(BaseModel):
     tool_plan: List[ToolPlanItem]
     knowledge_plan: List[str]
-    schema_choice: str
+    schema_choice: str | None = None

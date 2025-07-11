@@ -1,7 +1,7 @@
 ---
 name: "Claude Code Identity and Access Management"
 description: "How to configure user authentication, authorization, and access controls for Claude Code in your organization."
-arguments: []
+arguments: ""
 keywords:
   - authentication
   - authorization

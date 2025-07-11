@@ -1,9 +1,13 @@
 ---
-name: "Prp Base Create"
-description: "Create BASE PRP"
-arguments: []
+name: "Create Base PRP"
+description: "Generate a complete PRP for feature implementation with deep research, rich context, and self-validation loops."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - base
+  - create
+  - research
+  - context
 ---
 
 # Create BASE PRP

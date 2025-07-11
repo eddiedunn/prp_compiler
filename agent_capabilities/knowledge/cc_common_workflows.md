@@ -1,7 +1,7 @@
 ---
 name: "Claude Code Common Workflows"
 description: "Learn about common workflows and best practices for using Claude Code effectively."
-arguments: []
+arguments: ""
 keywords:
   - workflows
   - Claude Code

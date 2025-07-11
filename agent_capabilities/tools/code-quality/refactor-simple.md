@@ -1,9 +1,13 @@
 ---
-name: "Refactor Simple"
-description: "No description"
-arguments: []
+name: "Simple Refactor Check"
+description: "Perform a quick refactoring check on Python code, focusing on vertical slice boundaries, function complexity, type safety, and single responsibility. Generates a refactor_plan.md."
+arguments: ""
 keywords:
-  - placeholder
+  - refactor
+  - code quality
+  - python
+  - pydantic
+  - single responsibility
 ---
 
 Quick refactoring check for Python code focusing on:

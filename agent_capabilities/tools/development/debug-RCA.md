@@ -1,9 +1,13 @@
 ---
-name: "Debug Rca"
-description: "Debug Issue"
-arguments: []
+name: "Debug and Root Cause Analysis"
+description: "Systematically debug and diagnose a reported problem, find the root cause, and propose a fix."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - debug
+  - rca
+  - bug
+  - issue
+  - error
 ---
 
 # Debug Issue

@@ -1,9 +1,13 @@
 ---
-name: "Create Pr"
-description: "Create Pull Request"
-arguments: []
+name: "Create Pull Request"
+description: "Create a well-structured pull request with a proper description and context, following best practices for commits and branch management."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - git
+  - pull request
+  - pr
+  - commit
+  - branch
 ---
 
 # Create Pull Request

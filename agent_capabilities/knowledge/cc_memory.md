@@ -1,9 +1,13 @@
 ---
-name: "Cc Memory"
-description: "Manage Claude's memory"
-arguments: []
+name: "Manage Claude's Memory"
+description: "Learn how to manage Claude Code's memory across sessions with different memory locations and best practices."
+arguments: ""
 keywords:
-  - placeholder
+  - memory
+  - claude.md
+  - context
+  - session
+  - claude code
 ---
 
 # Manage Claude's memory

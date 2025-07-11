@@ -24,10 +24,12 @@ class Orchestrator:
         Returns the schema template and the assembled context string.
         """
         # 1. Get the schema template from the chosen schema
-        schema_item = self.schemas_manifest.get(plan.schema_choice)
-        if not schema_item:
-            raise ValueError(f"Schema '{plan.schema_choice}' not found in manifest.")
-        schema_template = Path(schema_item.file_path).read_text()
+        schema_template = ""
+        if plan.schema_choice:
+            schema_item = self.schemas_manifest.get(plan.schema_choice)
+            if not schema_item:
+                raise ValueError(f"Schema '{plan.schema_choice}' not found in manifest.")
+            schema_template = Path(schema_item.file_path).read_text()
 
         # 2. Assemble context from the knowledge plan
         assembled_knowledge = []
@@ -60,20 +62,22 @@ class Orchestrator:
         """
         Callback function for re.sub to handle dynamic content resolution.
         """
-        prefix = match.group(1)
-        command_or_path = match.group(2).strip()
+        prefix = match.group('prefix')
+        command_or_path = match.group('content').strip()
 
         if prefix == '!':
             try:
                 # Execute shell command
                 # Using shell=True can be a security risk. In a real-world scenario,
                 # we would want to sanitize inputs or avoid shell=True.
+                print(f"Executing command: {command_or_path}")
                 result = subprocess.run(
                     command_or_path,
                     shell=True,
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
+                    timeout=30
                 )
                 return result.stdout.strip()
             except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -97,7 +101,7 @@ class Orchestrator:
         - `!command` is replaced by the stdout of the executed shell command.
         - `@path/to/file` is replaced by the content of the file.
         """
-        # This regex finds patterns like `!command` or `@file/path`
-        # It captures the prefix ('!' or '@') and the rest of the line.
-        pattern = re.compile(r'([!@])(.+)')
+        # This regex finds patterns like `! command` or `@file/path` but avoids `#!` shebangs.
+        # It looks for lines starting with ! or @, followed by a space.
+        pattern = re.compile(r'^(?P<prefix>[!@])\s+(?P<content>.+)', re.MULTILINE)
         return pattern.sub(self._resolve_callback, raw_context)

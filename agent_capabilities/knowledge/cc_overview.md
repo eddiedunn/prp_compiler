@@ -1,9 +1,12 @@
 ---
-name: "Cc Overview"
-description: "Claude Code overview"
-arguments: []
+name: "Claude Code Overview"
+description: "An overview of Claude Code, the agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster through natural language commands."
+arguments: ""
 keywords:
-  - placeholder
+  - claude code
+  - overview
+  - agentic coding
+  - cli
 ---
 
 # Claude Code overview

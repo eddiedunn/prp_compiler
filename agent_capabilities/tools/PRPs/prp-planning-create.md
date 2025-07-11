@@ -1,9 +1,14 @@
 ---
-name: "Prp Planning Create"
-description: "Create PLANNING PRP (Advanced)"
-arguments: []
+name: "Create Planning PRP"
+description: "Transform rough ideas into comprehensive PRDs with rich visual documentation, based on deep research."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - planning
+  - create
+  - prd
+  - research
+  - visual
 ---
 
 # Create PLANNING PRP (Advanced)

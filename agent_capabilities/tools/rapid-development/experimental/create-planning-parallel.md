@@ -1,9 +1,13 @@
 ---
-name: "Create Planning Parallel"
-description: "Create PLANNING PRP (Parallel Research)"
-arguments: []
+name: "Create Planning PRP with Parallel Research"
+description: "Transform rough ideas into comprehensive PRDs using parallel research agents for maximum efficiency and depth."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - planning
+  - parallel
+  - research
+  - experimental
 ---
 
 # Create PLANNING PRP (Parallel Research)

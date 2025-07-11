@@ -1,9 +1,13 @@
 ---
-name: "Prp Spec Execute"
-description: "Execute SPEC PRP"
-arguments: []
+name: "Execute Spec PRP"
+description: "Implement a specification by executing an existing SPEC PRP, including planning, task execution, and validation."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - spec
+  - execute
+  - implement
+  - validate
 ---
 
 # Execute SPEC PRP

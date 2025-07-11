@@ -1,9 +1,13 @@
 ---
-name: "Ts Create Base Prp"
-description: "Create BASE PRP"
-arguments: []
+name: "ts_create_base_prp"
+description: "Generates a complete Product Requirements Prompt (PRP) for a TypeScript/JavaScript feature, including deep research and context."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - typescript
+  - javascript
+  - prp
+  - research
+  - planning
 ---
 
 # Create BASE PRP

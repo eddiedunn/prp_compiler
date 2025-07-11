@@ -1,9 +1,13 @@
 ---
-name: "Prp Spec Create"
-description: "Create SPEC PRP (Advanced)"
-arguments: []
+name: "Create Spec PRP"
+description: "Generate a comprehensive specification-driven PRP with clear transformation goals from a high-level specification."
+arguments: "$ARGUMENTS"
 keywords:
-  - placeholder
+  - prp
+  - spec
+  - create
+  - specification
+  - transformation
 ---
 
 # Create SPEC PRP (Advanced)

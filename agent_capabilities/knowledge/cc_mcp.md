@@ -1,9 +1,13 @@
 ---
-name: "Cc Mcp"
-description: "Model Context Protocol (MCP)"
-arguments: []
+name: "Model Context Protocol (MCP)"
+description: "Learn how to set up the Model Context Protocol (MCP) with Claude Code to enable access to external tools and data sources."
+arguments: ""
 keywords:
-  - placeholder
+  - mcp
+  - model context protocol
+  - claude code
+  - tools
+  - integration
 ---
 
 # Model Context Protocol (MCP)
