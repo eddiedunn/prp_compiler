@@ -13,33 +13,36 @@ def temp_capability_dir():
     # Valid capability file
     (temp_dir / "tool1.md").write_text(
         """---
-        name: example-tool
-        description: This is a test tool.
-        arguments: The file to process.
-        keywords: ["test", "example"]
-        ---
-        # Example Tool
-        This is the body of the tool file.
+name: example-tool
+description: This is a test tool.
+arguments: The file to process.
+keywords: ["test", "example"]
+---
+
+# Example Tool
+This is the body of the tool file.
         """
     )
 
     # Another valid capability file
     (temp_dir / "tool2.txt").write_text(
         """---
-        name: another-tool
-        description: Another test tool.
-        ---
-        Body of another tool.
+name: another-tool
+description: Another test tool.
+---
+
+Body of another tool.
         """
     )
 
     # File with invalid frontmatter (bad YAML)
     (temp_dir / "bad_tool.md").write_text(
         """---
-        name: bad-tool
-        description: this is not valid yaml:
-        ---
-        This file will be ignored.
+name: bad-tool
+description: this is not valid yaml:
+---
+
+This file will be ignored.
         """
     )
 
@@ -53,35 +56,41 @@ def temp_capability_dir():
 
 def test_generate_manifest(temp_capability_dir):
     """Test that the manifest is generated correctly."""
+    # The function now expects to be called on a specific subdirectory, not the root.
     manifest = generate_manifest(temp_capability_dir)
 
-    assert len(manifest) == 2
-    assert isinstance(manifest[0], ManifestItem)
-    assert isinstance(manifest[1], ManifestItem)
+    assert len(manifest) == 2, "Should find 2 valid manifest items"
 
-    # Sort by name to ensure consistent order for assertions
-    manifest.sort(key=lambda x: x.name)
+    # Create a dictionary for easy lookup
+    manifest_map = {item.name: item for item in manifest}
 
-    assert manifest[0].name == "another-tool"
-    assert manifest[0].description == "Another test tool."
-    assert manifest[0].arguments is None
-    assert manifest[0].keywords == []
-    assert manifest[0].file_path == str((temp_capability_dir / "tool2.txt").resolve())
+    # Assertions for 'example-tool'
+    assert 'example-tool' in manifest_map
+    example_tool = manifest_map['example-tool']
+    assert example_tool.description == "This is a test tool."
+    assert example_tool.arguments == "The file to process."
+    assert example_tool.keywords == ["test", "example"]
+    assert example_tool.file_path == str((temp_capability_dir / "tool1.md").resolve())
 
-    assert manifest[1].name == "example-tool"
-    assert manifest[1].description == "This is a test tool."
-    assert manifest[1].arguments == "The file to process."
-    assert manifest[1].keywords == ["test", "example"]
-    assert manifest[1].file_path == str((temp_capability_dir / "tool1.md").resolve())
+    # Assertions for 'another-tool'
+    assert 'another-tool' in manifest_map
+    another_tool = manifest_map['another-tool']
+    assert another_tool.description == "Another test tool."
+    assert another_tool.arguments is None
+    assert another_tool.keywords == []
+    assert another_tool.file_path == str((temp_capability_dir / "tool2.txt").resolve())
 
 def test_save_manifest(temp_capability_dir):
     """Test saving the manifest to a file."""
-    manifest_data = generate_manifest(temp_capability_dir)
-    
+    # Create dummy manifests for testing
+    tools_manifest = [ManifestItem(name='tool1', description='desc1', file_path='path1')]
+    knowledge_manifest = [ManifestItem(name='knowledge1', description='desc2', file_path='path2')]
+    schemas_manifest = [ManifestItem(name='schema1', description='desc3', file_path='path3')]
+
     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".json") as tmp_file:
         output_path = Path(tmp_file.name)
 
-    save_manifest(manifest_data, output_path)
+    save_manifest(tools_manifest, knowledge_manifest, schemas_manifest, output_path)
 
     assert output_path.exists()
     
@@ -89,6 +98,9 @@ def test_save_manifest(temp_capability_dir):
     with open(output_path, 'r') as f:
         loaded_data = json.load(f)
     
-    assert len(loaded_data) == 2
+    assert len(loaded_data) == 3
+    assert 'tools' in loaded_data
+    assert 'knowledge' in loaded_data
+    assert 'schemas' in loaded_data
     # Clean up the created file
     output_path.unlink()

@@ -43,7 +43,7 @@ def test_planner_prompt_format(planner_agent, sample_manifests):
     prompt = planner_agent.mock_model.generate_content.call_args[0][0]
 
     # Assert that the prompt contains all the necessary components
-    assert f'User\'s Goal: "{user_goal}"' in prompt
+    assert f'**User\'s Goal:**\n"{user_goal}"' in prompt
     assert '"name": "tool1"' in prompt
     assert '"name": "doc1"' in prompt
     assert '"name": "schema1"' in prompt

@@ -8,8 +8,7 @@ class BaseAgent:
     def __init__(self, model_name: str = "gemini-1.5-flash"):
         api_key = get_api_key()
         if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in .env file or environment variables.")
-        
+            raise ValueError("GEMINI_API_KEY not found. Please set it in your .env file or environment variables.")
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
 

@@ -5,6 +5,7 @@ from prp_compiler.manifests import generate_manifest, save_manifest
 from prp_compiler.agents.planner import PlannerAgent
 from prp_compiler.agents.synthesizer import SynthesizerAgent
 from prp_compiler.orchestrator import Orchestrator
+from prp_compiler.utils import count_tokens
 
 # Define default paths. These assume a 'agent_capabilities' directory
 # in the current working directory where the command is run.
@@ -42,6 +43,10 @@ def run():
     orchestrator = Orchestrator(tools_manifest, knowledge_manifest, schemas_manifest)
     schema_template, assembled_context = orchestrator.assemble_context(execution_plan)
     print("   Context assembled.")
+
+    print("3.5. Counting tokens in assembled context...")
+    token_count = count_tokens(assembled_context)
+    print(f"   Assembled context contains {token_count} tokens.")
 
     print("4. Synthesizing PRP...")
     synthesizer = SynthesizerAgent()

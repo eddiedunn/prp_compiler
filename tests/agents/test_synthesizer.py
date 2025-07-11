@@ -39,4 +39,4 @@ def test_synthesizer_prompt_format(synthesizer_agent):
     # Assert that the prompt contains the schema and context
     assert f"**Schema Template:**\n---\n{schema_template}\n---" in prompt
     assert f"**Assembled Context:**\n---\n{context}\n---" in prompt
-    assert "Now, produce the final, complete PRP." in prompt
+    assert "Now, generate the final PRP as a complete Markdown document." in prompt

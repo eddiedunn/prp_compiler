@@ -2,7 +2,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from .models import ManifestItem, ExecutionPlan
 
 class Orchestrator:
@@ -20,43 +20,44 @@ class Orchestrator:
 
     def assemble_context(self, plan: ExecutionPlan) -> Tuple[str, str]:
         """
-        Assembles the context from the execution plan.
-        Returns the schema template and the assembled context string.
+        Assembles the context from the execution plan by reading the full content
+        of all specified files, concatenating them, and resolving dynamic content.
+
+        Returns the schema template and the fully resolved context string.
         """
-        # 1. Get the schema template from the chosen schema
-        schema_template = ""
-        if plan.schema_choice:
-            schema_item = self.schemas_manifest.get(plan.schema_choice)
-            if not schema_item:
-                raise ValueError(f"Schema '{plan.schema_choice}' not found in manifest.")
-            schema_template = Path(schema_item.file_path).read_text()
+        # 1. Find and read the content of the chosen schema file.
+        if not plan.schema_choice or plan.schema_choice not in self.schemas_manifest:
+            raise ValueError(f"Schema '{plan.schema_choice}' not found in manifest.")
+        schema_item = self.schemas_manifest[plan.schema_choice]
+        schema_template = Path(schema_item.file_path).read_text()
 
-        # 2. Assemble context from the knowledge plan
-        assembled_knowledge = []
+        context_parts = []
+
+        # 2. Iterate through the knowledge_plan and read file content.
         for knowledge_name in plan.knowledge_plan:
-            knowledge_item = self.knowledge_manifest.get(knowledge_name)
-            if knowledge_item:
-                raw_content = Path(knowledge_item.file_path).read_text()
-                # Resolve any dynamic content within the knowledge file
-                resolved_content = self._resolve_dynamic_content(raw_content)
-                assembled_knowledge.append(f"--- KNOWLEDGE: {knowledge_name} ---\n{resolved_content}")
+            if knowledge_name in self.knowledge_manifest:
+                knowledge_item = self.knowledge_manifest[knowledge_name]
+                context_parts.append(Path(knowledge_item.file_path).read_text())
             else:
-                assembled_knowledge.append(f"[WARNING: Knowledge '{knowledge_name}' not found in manifest.]")
-        
-        # 3. For now, we will just use the tool descriptions in the context.
-        # A more advanced implementation would execute the tools and use their output.
-        tool_descriptions = []
-        for tool_plan_item in plan.tool_plan:
-            tool_item = self.tools_manifest.get(tool_plan_item.command_name)
-            if tool_item:
-                tool_descriptions.append(f"--- TOOL: {tool_item.name} ---\nDescription: {tool_item.description}")
-            else:
-                tool_descriptions.append(f"[WARNING: Tool '{tool_plan_item.command_name}' not found in manifest.]")
+                print(f"[WARNING] Knowledge '{knowledge_name}' not found in manifest.")
 
-        # Combine all parts into a single context string
-        final_context = "\n\n".join(assembled_knowledge + tool_descriptions)
-        
-        return schema_template, final_context
+        # 3. Iterate through the tool_plan and read file content.
+        for tool_plan_item in plan.tool_plan:
+            command_name = tool_plan_item.command_name
+            if command_name in self.tools_manifest:
+                tool_item = self.tools_manifest[command_name]
+                context_parts.append(Path(tool_item.file_path).read_text())
+            else:
+                print(f"[WARNING] Tool '{command_name}' not found in manifest.")
+
+        # 4. Concatenate all content into a single string.
+        assembled_context = "\n\n---\n\n".join(context_parts)
+
+        # 5. Resolve any dynamic content (e.g., !commands or @files) in the combined string.
+        resolved_context = self._resolve_dynamic_content(assembled_context)
+
+        # 6. Return the schema and the resolved context.
+        return schema_template, resolved_context
 
     def _resolve_callback(self, match: re.Match) -> str:
         """
