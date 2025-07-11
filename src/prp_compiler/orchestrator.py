@@ -72,21 +72,18 @@ class Orchestrator:
 
         if prefix == "!":
             try:
-                # Execute shell command
-                # Using shell=True can be a security risk. In a real-world scenario,
-                # we would want to sanitize inputs or avoid shell=True.
-                print(f"Executing command: {command_or_path}")
+                # Split command to avoid shell=True
+                command_parts = command_or_path.split()
+                print(f"Executing command: {' '.join(command_parts)}")
                 result = subprocess.run(
-                    command_or_path,
-                    shell=True,
+                    command_parts,
                     capture_output=True,
                     text=True,
                     check=True,
                     timeout=30,
                 )
                 return result.stdout.strip()
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                # In case of error, return a descriptive string
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
                 return f"[ERROR: Command '{command_or_path}' failed: {e}]"
         elif prefix == "@":
             try:

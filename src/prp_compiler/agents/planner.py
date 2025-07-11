@@ -66,22 +66,16 @@ class PlannerAgent(BaseAgent):
         """
         Generates an execution plan by calling the LLM.
         """
-        # Convert manifests to JSON strings for the prompt
-        tools_json = json.dumps(
-            [item.model_dump() for item in tools_manifest], indent=2
-        )
-        knowledge_json = json.dumps(
-            [item.model_dump() for item in knowledge_manifest], indent=2
-        )
-        schemas_json = json.dumps(
-            [item.model_dump() for item in schemas_manifest], indent=2
-        )
+        # Convert lists of Pydantic models to lists of dicts, then to JSON strings
+        tools_str = json.dumps([item.model_dump() for item in tools_manifest], indent=2)
+        knowledge_str = json.dumps([item.model_dump() for item in knowledge_manifest], indent=2)
+        schemas_str = json.dumps([item.model_dump() for item in schemas_manifest], indent=2)
 
         prompt = PLANNER_PROMPT_TEMPLATE.format(
             user_goal=user_goal,
-            tools_manifest=tools_json,
-            knowledge_manifest=knowledge_json,
-            schemas_manifest=schemas_json,
+            tools_manifest=tools_str,
+            knowledge_manifest=knowledge_str,
+            schemas_manifest=schemas_str,
         )
 
         response = self.model.generate_content(prompt)

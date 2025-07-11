@@ -61,11 +61,11 @@ def save_manifest(
 def generate_and_save_all_manifests(
     tools_path: Path, knowledge_path: Path, schemas_path: Path, output_path: Path
 ) -> Tuple[List[ManifestItem], List[ManifestItem], List[ManifestItem]]:
-    """
-    Generates and saves all manifests, returning the generated lists.
-    """
+    """Generates and saves all manifests, returning the generated lists."""
+    print(f"Generating manifests from: {tools_path}, {knowledge_path}, {schemas_path}")
     tools_manifest = generate_manifest(tools_path)
     knowledge_manifest = generate_manifest(knowledge_path)
     schemas_manifest = generate_manifest(schemas_path)
     save_manifest(tools_manifest, knowledge_manifest, schemas_manifest, output_path)
+    print(f"Manifests successfully generated and saved to {output_path}")
     return tools_manifest, knowledge_manifest, schemas_manifest

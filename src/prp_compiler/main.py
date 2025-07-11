@@ -67,7 +67,6 @@ def run():
             args.tools_path, args.knowledge_path, args.schemas_path, args.manifest_path
         )
     )
-    print(f"   Manifests saved to {args.manifest_path}")
 
     print("2. Planning execution...")
     planner = PlannerAgent()
@@ -83,9 +82,15 @@ def run():
 
     print("3.5. Counting tokens in assembled context...")
     # TODO: Plumb a model name parameter through the application.
-    # For now, this uses the default model in count_tokens ("gemini-1.5-flash").
+    # For now, this uses the default model in count_tokens ("gpt-4").
     token_count = count_tokens(assembled_context)
-    print(f"   Assembled context contains {token_count} tokens.")
+    print(f"   Assembled context contains approximately {token_count} tokens.")
+
+    # Set a reasonable limit, e.g., 100k for Gemini 1.5 Pro
+    TOKEN_LIMIT = 100000
+    if token_count > TOKEN_LIMIT:
+        print(f"[ERROR] Assembled context ({token_count} tokens) exceeds the limit of {TOKEN_LIMIT}. Please refine your goal or reduce the number of capabilities.")
+        return # Exit gracefully
 
     print("4. Synthesizing PRP...")
     synthesizer = SynthesizerAgent()
