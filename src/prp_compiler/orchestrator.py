@@ -5,14 +5,18 @@ from pathlib import Path
 from typing import List, Tuple
 from .models import ManifestItem, ExecutionPlan
 
+
 class Orchestrator:
     """
     Orchestrates the execution of tasks, including resolving dynamic content.
     """
-    def __init__(self, 
-                 tools_manifest: List[ManifestItem], 
-                 knowledge_manifest: List[ManifestItem], 
-                 schemas_manifest: List[ManifestItem]):
+
+    def __init__(
+        self,
+        tools_manifest: List[ManifestItem],
+        knowledge_manifest: List[ManifestItem],
+        schemas_manifest: List[ManifestItem],
+    ):
         """Initializes the Orchestrator with manifests for lookup."""
         self.tools_manifest = {item.name: item for item in tools_manifest}
         self.knowledge_manifest = {item.name: item for item in knowledge_manifest}
@@ -63,10 +67,10 @@ class Orchestrator:
         """
         Callback function for re.sub to handle dynamic content resolution.
         """
-        prefix = match.group('prefix')
-        command_or_path = match.group('content').strip()
+        prefix = match.group(1)
+        command_or_path = match.group(2).strip()
 
-        if prefix == '!':
+        if prefix == "!":
             try:
                 # Execute shell command
                 # Using shell=True can be a security risk. In a real-world scenario,
@@ -78,13 +82,13 @@ class Orchestrator:
                     capture_output=True,
                     text=True,
                     check=True,
-                    timeout=30
+                    timeout=30,
                 )
                 return result.stdout.strip()
             except (subprocess.CalledProcessError, FileNotFoundError) as e:
                 # In case of error, return a descriptive string
                 return f"[ERROR: Command '{command_or_path}' failed: {e}]"
-        elif prefix == '@':
+        elif prefix == "@":
             try:
                 # Read file content
                 file_path = Path(command_or_path)
@@ -93,8 +97,8 @@ class Orchestrator:
                 return f"[ERROR: File not found at '{command_or_path}']"
             except IOError as e:
                 return f"[ERROR: Could not read file at '{command_or_path}': {e}]"
-        
-        return match.group(0) # Should not happen with the given regex
+
+        return match.group(0)  # Should not happen with the given regex
 
     def _resolve_dynamic_content(self, raw_context: str) -> str:
         """
@@ -102,7 +106,6 @@ class Orchestrator:
         - `!command` is replaced by the stdout of the executed shell command.
         - `@path/to/file` is replaced by the content of the file.
         """
-        # This regex finds patterns like `! command` or `@file/path` but avoids `#!` shebangs.
-        # It looks for lines starting with ! or @, followed by a space.
-        pattern = re.compile(r'^(?P<prefix>[!@])\s+(?P<content>.+)', re.MULTILINE)
+        # It captures the prefix (! or @) and the command/path.
+        pattern = re.compile(r"([!@])\s*([^\n]+)")
         return pattern.sub(self._resolve_callback, raw_context)

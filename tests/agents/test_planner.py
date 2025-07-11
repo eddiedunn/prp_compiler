@@ -7,7 +7,7 @@ from src.prp_compiler.models import ManifestItem, ExecutionPlan, ToolPlanItem
 @pytest.fixture
 def planner_agent():
     """Provides a PlannerAgent instance for testing."""
-    with patch('google.generativeai.GenerativeModel') as mock_model_constructor:
+    with patch("google.generativeai.GenerativeModel") as mock_model_constructor:
         # Mock the model instance returned by the constructor
         mock_model_instance = MagicMock()
         mock_model_constructor.return_value = mock_model_instance
@@ -16,13 +16,21 @@ def planner_agent():
         agent.mock_model = mock_model_instance
         return agent
 
+
 @pytest.fixture
 def sample_manifests():
     """Provides sample manifest data for testing."""
-    tools = [ManifestItem(name='tool1', description='A test tool', file_path='/path/tool1')]
-    knowledge = [ManifestItem(name='doc1', description='A knowledge doc', file_path='/path/doc1')]
-    schemas = [ManifestItem(name='schema1', description='A schema', file_path='/path/schema1')]
+    tools = [
+        ManifestItem(name="tool1", description="A test tool", file_path="/path/tool1")
+    ]
+    knowledge = [
+        ManifestItem(name="doc1", description="A knowledge doc", file_path="/path/doc1")
+    ]
+    schemas = [
+        ManifestItem(name="schema1", description="A schema", file_path="/path/schema1")
+    ]
     return tools, knowledge, schemas
+
 
 def test_planner_prompt_format(planner_agent, sample_manifests):
     """Test 1: Assert that the plan() method calls the mock API with a correctly formatted prompt."""
@@ -38,7 +46,7 @@ def test_planner_prompt_format(planner_agent, sample_manifests):
 
     # Check that generate_content was called once
     planner_agent.mock_model.generate_content.assert_called_once()
-    
+
     # Extract the prompt passed to the mock
     prompt = planner_agent.mock_model.generate_content.call_args[0][0]
 
@@ -48,13 +56,14 @@ def test_planner_prompt_format(planner_agent, sample_manifests):
     assert '"name": "doc1"' in prompt
     assert '"name": "schema1"' in prompt
 
+
 def test_planner_parses_response(planner_agent, sample_manifests):
     """Test 2: Assert that plan() correctly cleans, parses, and returns a valid ExecutionPlan."""
     user_goal = "Test goal"
     tools, knowledge, schemas = sample_manifests
 
     # Mocked API response with markdown fences and extra whitespace
-    mocked_json_str = '''
+    mocked_json_str = """
     ```json
     {
         "tool_plan": [
@@ -64,7 +73,7 @@ def test_planner_parses_response(planner_agent, sample_manifests):
         "schema_choice": "schema1"
     }
     ```
-    '''
+    """
     mock_response = MagicMock()
     mock_response.text = mocked_json_str
     planner_agent.mock_model.generate_content.return_value = mock_response

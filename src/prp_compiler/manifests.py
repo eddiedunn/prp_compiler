@@ -2,11 +2,12 @@ import json
 import re
 import yaml
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from .models import ManifestItem
 
 # Regex to find YAML frontmatter at the start of a file
-FRONTMATTER_RE = re.compile(r'^---\s*$(.*?)^---\s*$', re.S | re.M)
+FRONTMATTER_RE = re.compile(r"^---\s*$(.*?)^---\s*$", re.S | re.M)
+
 
 def _parse_frontmatter(file_path: Path) -> Dict[str, Any]:
     """Parses the YAML frontmatter from a file using a robust regex."""
@@ -21,32 +22,50 @@ def _parse_frontmatter(file_path: Path) -> Dict[str, Any]:
     except (IOError, yaml.YAMLError):
         return {}
 
+
 def generate_manifest(capability_path: Path) -> List[ManifestItem]:
     """Generates a manifest by scanning all files in a directory."""
     manifest = []
-    for file_path in capability_path.rglob('*.*'):
+    for file_path in capability_path.rglob("*.*"):
         if file_path.is_file():
             frontmatter = _parse_frontmatter(file_path)
-            if 'name' in frontmatter and 'description' in frontmatter:
+            if "name" in frontmatter and "description" in frontmatter:
                 item = ManifestItem(
-                    name=frontmatter['name'],
-                    description=frontmatter['description'],
-                    arguments=frontmatter.get('arguments'),
-                    keywords=frontmatter.get('keywords', []),
+                    name=frontmatter["name"],
+                    description=frontmatter["description"],
+                    arguments=frontmatter.get("arguments"),
+                    keywords=frontmatter.get("keywords", []),
                     file_path=str(file_path.resolve()),
                 )
                 manifest.append(item)
     return manifest
 
-def save_manifest(tools_manifest: List[ManifestItem], knowledge_manifest: List[ManifestItem], schemas_manifest: List[ManifestItem], output_path: Path):
+
+def save_manifest(
+    tools: List[ManifestItem],
+    knowledge: List[ManifestItem],
+    schemas: List[ManifestItem],
+    output_path: Path,
+):
     """Saves all manifests to a single structured JSON file."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
     manifest_data = {
-        "tools": [item.model_dump() for item in tools_manifest],
-        "knowledge": [item.model_dump() for item in knowledge_manifest],
-        "schemas": [item.model_dump() for item in schemas_manifest],
+        "tools": [item.model_dump() for item in tools],
+        "knowledge": [item.model_dump() for item in knowledge],
+        "schemas": [item.model_dump() for item in schemas],
     }
-
-    with open(output_path, 'w') as f:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
         json.dump(manifest_data, f, indent=2)
+
+
+def generate_and_save_all_manifests(
+    tools_path: Path, knowledge_path: Path, schemas_path: Path, output_path: Path
+) -> Tuple[List[ManifestItem], List[ManifestItem], List[ManifestItem]]:
+    """
+    Generates and saves all manifests, returning the generated lists.
+    """
+    tools_manifest = generate_manifest(tools_path)
+    knowledge_manifest = generate_manifest(knowledge_path)
+    schemas_manifest = generate_manifest(schemas_path)
+    save_manifest(tools_manifest, knowledge_manifest, schemas_manifest, output_path)
+    return tools_manifest, knowledge_manifest, schemas_manifest

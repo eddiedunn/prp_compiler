@@ -23,6 +23,7 @@ You are an expert prompt engineer. Your task is to generate a complete and detai
 Now, generate the final PRP as a complete Markdown document.
 """
 
+
 class SynthesizerAgent(BaseAgent):
     """Agent responsible for synthesizing the final PRP."""
 
@@ -31,8 +32,7 @@ class SynthesizerAgent(BaseAgent):
         Generates the final PRP by calling the LLM with the schema and context.
         """
         prompt = SYNTHESIZER_PROMPT_TEMPLATE.format(
-            schema_template=schema_template,
-            context=context
+            schema_template=schema_template, context=context
         )
 
         response = self.model.generate_content(prompt)
