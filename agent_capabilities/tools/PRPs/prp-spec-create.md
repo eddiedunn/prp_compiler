@@ -1,3 +1,11 @@
+---
+name: "Prp Spec Create"
+description: "Create SPEC PRP (Advanced)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create SPEC PRP (Advanced)
 
 Generate a comprehensive specification-driven PRP with clear transformation goals.

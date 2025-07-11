@@ -1,3 +1,11 @@
+---
+name: "Smart Resolver"
+description: "Pre-resolution analysis:"
+arguments: []
+keywords:
+  - placeholder
+---
+
 Perform an intelligent merge conflict resolution with deep understanding of our codebase.
 
 ## Pre-resolution analysis:

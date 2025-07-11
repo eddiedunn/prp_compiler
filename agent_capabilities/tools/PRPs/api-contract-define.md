@@ -1,3 +1,11 @@
+---
+name: "Api Contract Define"
+description: "Define API Contract Between Backend and Frontend"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Define API Contract Between Backend and Frontend
 
 Feature: $ARGUMENTS

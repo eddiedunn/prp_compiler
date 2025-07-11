@@ -1,3 +1,11 @@
+---
+name: "Cc Hooks"
+description: "Hooks"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Hooks
 
 > Customize and extend Claude Code's behavior by registering shell commands

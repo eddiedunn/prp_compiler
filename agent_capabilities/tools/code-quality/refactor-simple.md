@@ -1,3 +1,11 @@
+---
+name: "Refactor Simple"
+description: "No description"
+arguments: []
+keywords:
+  - placeholder
+---
+
 Quick refactoring check for Python code focusing on:
 - Vertical slice boundaries
 - Function complexity

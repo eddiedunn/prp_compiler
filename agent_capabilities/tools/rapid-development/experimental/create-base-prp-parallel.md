@@ -1,3 +1,11 @@
+---
+name: "Create Base Prp Parallel"
+description: "Create BASE PRP with Parallel Research"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create BASE PRP with Parallel Research
 
 ## Feature: $ARGUMENTS

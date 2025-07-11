@@ -1,3 +1,11 @@
+---
+name: "Prp Planning"
+description: "Purpose"
+arguments: []
+keywords:
+  - placeholder
+---
+
 name: "Planning PRP Template - PRD Generation with Diagrams"
 description: |
 

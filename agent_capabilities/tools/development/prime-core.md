@@ -1,3 +1,11 @@
+---
+name: "Prime Core"
+description: "Prime Context for Claude Code"
+arguments: []
+keywords:
+  - placeholder
+---
+
 > Command for priming Claude Code with core knowledge about your project
 
 # Prime Context for Claude Code

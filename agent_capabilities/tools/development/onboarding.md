@@ -1,3 +1,11 @@
+---
+name: "Onboarding"
+description: "1. Project Overview"
+arguments: []
+keywords:
+  - placeholder
+---
+
 Please perform a comprehensive onboarding analysis for a new developer joining this project. Execute the following steps:
 
 ## 1. Project Overview

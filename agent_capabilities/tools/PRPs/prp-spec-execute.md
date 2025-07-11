@@ -1,3 +1,11 @@
+---
+name: "Prp Spec Execute"
+description: "Execute SPEC PRP"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Execute SPEC PRP
 
 Implement a specification using an existing SPEC PRP.

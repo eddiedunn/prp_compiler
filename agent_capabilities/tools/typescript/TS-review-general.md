@@ -1,3 +1,11 @@
+---
+name: "Ts Review General"
+description: "General TypeScript/Astro Codebase Review"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # General TypeScript/Astro Codebase Review
 
 Perform a comprehensive review of the entire TypeScript/Astro codebase focusing on architecture, patterns, and best practices.

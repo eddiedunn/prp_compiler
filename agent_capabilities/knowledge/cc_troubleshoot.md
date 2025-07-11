@@ -1,3 +1,11 @@
+---
+name: "Cc Troubleshoot"
+description: "Troubleshooting"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Troubleshooting
 
 > Discover solutions to common issues with Claude Code installation and usage.

@@ -1,3 +1,11 @@
+---
+name: "Prp Validate"
+description: "Validate PRP"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Validate PRP
 
 ## PRP File: $ARGUMENTS

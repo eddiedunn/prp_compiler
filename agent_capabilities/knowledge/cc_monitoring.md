@@ -1,3 +1,11 @@
+---
+name: "Cc Monitoring"
+description: "Monitoring"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Monitoring
 
 > Learn how to enable and configure OpenTelemetry for Claude Code.

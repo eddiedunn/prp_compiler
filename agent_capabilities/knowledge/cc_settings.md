@@ -1,3 +1,11 @@
+---
+name: "Cc Settings"
+description: "Claude Code settings"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Claude Code settings
 
 > Configure Claude Code with global and project-level settings, and environment variables.

@@ -1,3 +1,11 @@
+---
+name: "Hackathon Research"
+description: "Hackathon Multi-Option Research"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Hackathon Multi-Option Research
 
 Rapidly evaluate multiple solution approaches for hackathon challenges using massive parallel research (15 concurrent agents).

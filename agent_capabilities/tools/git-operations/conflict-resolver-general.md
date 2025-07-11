@@ -1,3 +1,11 @@
+---
+name: "Conflict Resolver General"
+description: "Step-by-step process:"
+arguments: []
+keywords:
+  - placeholder
+---
+
 You are an expert at resolving Git merge conflicts intelligently. Your task is to resolve all merge conflicts in the current repository.
 
 ## Step-by-step process:

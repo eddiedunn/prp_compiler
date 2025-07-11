@@ -1,3 +1,11 @@
+---
+name: "Cc Memory"
+description: "Manage Claude's memory"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Manage Claude's memory
 
 > Learn how to manage Claude Code's memory across sessions with different memory locations and best practices.

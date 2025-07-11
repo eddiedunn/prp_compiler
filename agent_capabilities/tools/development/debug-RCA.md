@@ -1,3 +1,11 @@
+---
+name: "Debug Rca"
+description: "Debug Issue"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Debug Issue
 
 Systematically debug and diagnose the reported problem.

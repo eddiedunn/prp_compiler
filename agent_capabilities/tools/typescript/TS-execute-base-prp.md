@@ -1,3 +1,11 @@
+---
+name: "Ts Execute Base Prp"
+description: "Execute BASE PRP"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Execute BASE PRP
 
 Implement a TypeScript/JavaScript feature using the PRP file.

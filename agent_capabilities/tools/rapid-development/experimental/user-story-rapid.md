@@ -1,3 +1,11 @@
+---
+name: "User Story Rapid"
+description: "Analyze User Story and Create Implementation Plan"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Analyze User Story and Create Implementation Plan
 
 User Story: $ARGUMENTS

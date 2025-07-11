@@ -1,3 +1,11 @@
+---
+name: "Prp Base Create"
+description: "Create BASE PRP"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create BASE PRP
 
 ## Feature: $ARGUMENTS

@@ -1,3 +1,11 @@
+---
+name: "Conflict Resolver Specific"
+description: "Resolution strategy based on arguments:"
+arguments: []
+keywords:
+  - placeholder
+---
+
 You are an expert at resolving Git merge conflicts. $ARGUMENTS
 
 ## Resolution strategy based on arguments:

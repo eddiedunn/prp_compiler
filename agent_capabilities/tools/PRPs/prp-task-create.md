@@ -1,3 +1,11 @@
+---
+name: "Prp Task Create"
+description: "Create TASK PRP (Advanced)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create TASK PRP (Advanced)
 
 Generate a comprehensive task list for focused changes with validation.

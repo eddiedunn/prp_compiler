@@ -1,3 +1,11 @@
+---
+name: "Prp Base Typescript"
+description: "Purpose"
+arguments: []
+keywords:
+  - placeholder
+---
+
 name: "Base PRP Template v2 - Context-Rich with Validation Loops"
 description: |
 

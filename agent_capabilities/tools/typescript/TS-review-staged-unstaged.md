@@ -1,3 +1,11 @@
+---
+name: "Ts Review Staged Unstaged"
+description: "Review Focus Areas"
+arguments: []
+keywords:
+  - placeholder
+---
+
 List and review any files in the staging area, both staged and unstaged.
 Ensure you look at both new files and modified files.
 

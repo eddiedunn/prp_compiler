@@ -1,3 +1,11 @@
+---
+name: "Prp Task Execute"
+description: "Execute TASK PRP"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Execute TASK PRP
 
 Run through a task list from an existing TASK PRP.

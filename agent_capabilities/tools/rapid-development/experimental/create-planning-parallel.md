@@ -1,3 +1,11 @@
+---
+name: "Create Planning Parallel"
+description: "Create PLANNING PRP (Parallel Research)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create PLANNING PRP (Parallel Research)
 
 Transform rough ideas into comprehensive PRDs using parallel research agents for maximum efficiency and depth.

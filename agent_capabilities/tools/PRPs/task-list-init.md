@@ -1,3 +1,11 @@
+---
+name: "Task List Init"
+description: "list of tasks to be completed to fullfill the PRP in the order they should be completed using infomration dense keywords"
+arguments: []
+keywords:
+  - placeholder
+---
+
 claude
 ** Create a comprehensive task list in PRPs/checklist.md for building our hackathon project based on $ARGIMENTS
 

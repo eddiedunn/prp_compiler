@@ -1,3 +1,11 @@
+---
+name: "Prp Planning Create"
+description: "Create PLANNING PRP (Advanced)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Create PLANNING PRP (Advanced)
 
 Transform rough ideas into comprehensive PRDs with rich visual documentation.

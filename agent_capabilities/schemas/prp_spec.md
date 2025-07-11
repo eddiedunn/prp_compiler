@@ -1,3 +1,11 @@
+---
+name: "Prp Spec"
+description: "Specification Template (prompt inspired by IndyDevDan)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Specification Template (prompt inspired by IndyDevDan)
 
 > Ingest the information from this file, implement the Low-Level Tasks, and generate the code that will satisfy the High and Mid-Level Objectives.

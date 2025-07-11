@@ -1,3 +1,11 @@
+---
+name: "Cc Mcp"
+description: "Model Context Protocol (MCP)"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Model Context Protocol (MCP)
 
 > Learn how to set up MCP with Claude Code.

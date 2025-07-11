@@ -1,3 +1,11 @@
+---
+name: "Cc Overview"
+description: "Claude Code overview"
+arguments: []
+keywords:
+  - placeholder
+---
+
 # Claude Code overview
 
 > Learn about Claude Code, the agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster through natural language commands.
