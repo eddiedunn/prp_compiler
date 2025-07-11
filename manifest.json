@@ -1,0 +1,29 @@
+{
+  "tools": [
+    {
+      "name": "list_files",
+      "description": "Lists files in a given directory.",
+      "arguments": null,
+      "keywords": [],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/capabilities/tools/file_lister.md"
+    }
+  ],
+  "knowledge": [
+    {
+      "name": "prp_best_practices",
+      "description": "Best practices for writing PRPs.",
+      "arguments": null,
+      "keywords": [],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/capabilities/knowledge/prp_best_practices.md"
+    }
+  ],
+  "schemas": [
+    {
+      "name": "standard_prp",
+      "description": "A standard template for a Product Requirements Prompt.",
+      "arguments": null,
+      "keywords": [],
+      "file_path": "/Users/tmwsiy/code/prp_compiler/capabilities/schemas/standard_prp.md"
+    }
+  ]
+}

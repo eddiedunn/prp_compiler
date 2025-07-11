@@ -14,5 +14,14 @@
     [project.scripts]
     prp-compiler = "prp_compiler.main:run"
 
+    [project.optional-dependencies]
+    dev = [
+        "pytest",
+        "pytest-cov",
+        "ruff",
+        "mypy",
+        "types-PyYAML",
+    ]
+
     [tool.pytest.ini_options]
     pythonpath = ["src"]

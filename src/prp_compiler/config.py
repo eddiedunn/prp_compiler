@@ -1,12 +1,13 @@
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from typing import Optional
 
-def configure_gemini():
-    """Loads API key from .env and configures the Gemini client."""
+def get_api_key() -> Optional[str]:
+    """Loads the Gemini API key from a .env file or the environment.
+
+    Returns:
+        The API key as a string, or None if not found.
+    """
     load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file or environment variables.")
-    genai.configure(api_key=api_key)
-    print("Gemini API configured successfully.")
+    return os.getenv("GEMINI_API_KEY")
+
