@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from src.prp_compiler.agents.planner import PlannerAgent
-from src.prp_compiler.models import ManifestItem, ExecutionPlan, ToolPlanItem
+from src.prp_compiler.models import ManifestItem
 
+class DummyPrimitiveLoader:
+    pass
 
 @pytest.fixture
 def planner_agent():
@@ -32,71 +34,38 @@ def sample_manifests():
     return tools, knowledge, schemas
 
 
-def test_planner_prompt_format(planner_agent, sample_manifests):
-    """Test 1: Assert that the plan() method calls the mock API with a correctly formatted prompt."""
-    user_goal = "Test goal"
-    tools, knowledge, schemas = sample_manifests
+@patch("src.prp_compiler.agents.planner.BaseAgent")
+def test_run_planning_loop(mock_base_agent):
+    # Setup
+    primitive_loader = DummyPrimitiveLoader()
+    planner = PlannerAgent(primitive_loader)
 
-    # Set up a dummy response to allow the method to complete
-    mock_response = MagicMock()
-    mock_response.text = '{"tool_plan": [], "knowledge_plan": [], "schema_choice": ""}'
-    planner_agent.mock_model.generate_content.return_value = mock_response
+    # Mock the Gemini model's generate_content to return two sequential responses
+    mock_model = MagicMock()
+    planner.model = mock_model
 
-    planner_agent.plan(user_goal, tools, knowledge, schemas, "")
+    # Mock function_call objects for two steps
+    retrieve_fc = MagicMock()
+    retrieve_fc.name = "retrieve_knowledge"
+    retrieve_fc.args = {"query": "test query"}
+    finish_fc = MagicMock()
+    finish_fc.name = "finish"
+    finish_fc.args = {"schema_choice": "standard_prp", "pattern_references": ["pattern1"]}
 
-    # Check that generate_content was called once
-    planner_agent.mock_model.generate_content.assert_called_once()
+    # Mock response objects
+    retrieve_response = MagicMock()
+    retrieve_response.candidates = [MagicMock(content=MagicMock(parts=[MagicMock(function_call=retrieve_fc)]))]
+    finish_response = MagicMock()
+    finish_response.candidates = [MagicMock(content=MagicMock(parts=[MagicMock(function_call=finish_fc)]))]
 
-    # Extract the prompt passed to the mock
-    prompt = planner_agent.mock_model.generate_content.call_args[0][0]
+    # Side effect for generate_content: first call returns retrieve, second returns finish
+    mock_model.generate_content.side_effect = [retrieve_response, finish_response]
 
-    # Assert that the prompt contains all the necessary components
-    assert f'**User\'s Goal:**\n"{user_goal}"' in prompt
-    assert '"name": "tool1"' in prompt
-    assert '"name": "doc1"' in prompt
-    assert '"name": "schema1"' in prompt
+    # Run
+    user_goal = "Write a PRP for X"
+    steps = planner.run_planning_loop(user_goal, max_steps=2)
 
-
-@pytest.mark.parametrize(
-    "mocked_json_str",
-    [
-        # Standard case with ```json
-        '```json\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\n```',
-        # Case with just ```
-        '```\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\n```',
-        # Case with no code fence
-        '{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}',
-        # Case with surrounding text
-        'Here is the plan:\n{"tool_plan": [{"command_name": "tool1", "arguments": "some_args"}], "knowledge_plan": ["doc1"], "schema_choice": "schema1"}\nI hope this helps!',
-    ],
-)
-def test_planner_parses_response(planner_agent, sample_manifests, mocked_json_str):
-    """Test 2: Assert that plan() correctly cleans, parses, and returns a valid ExecutionPlan."""
-    user_goal = "Test goal"
-    tools, knowledge, schemas = sample_manifests
-
-    # Mocked API response with markdown fences and extra whitespace
-    mocked_json_str = """
-    ```json
-    {
-        "tool_plan": [
-            {"command_name": "tool1", "arguments": "some_args"}
-        ],
-        "knowledge_plan": ["doc1"],
-        "schema_choice": "schema1"
-    }
-    ```
-    """
-    mock_response = MagicMock()
-    mock_response.text = mocked_json_str
-    planner_agent.mock_model.generate_content.return_value = mock_response
-
-    result = planner_agent.plan(user_goal, tools, knowledge, schemas, "")
-
-    assert isinstance(result, ExecutionPlan)
-    assert result.schema_choice == "schema1"
-    assert result.knowledge_plan == ["doc1"]
-    assert len(result.tool_plan) == 1
-    assert isinstance(result.tool_plan[0], ToolPlanItem)
-    assert result.tool_plan[0].command_name == "tool1"
-    assert result.tool_plan[0].arguments == "some_args"
+    # Assert
+    assert len(steps) == 2
+    assert steps[0].thought.next_action.tool_name == "retrieve_knowledge"
+    assert steps[1].thought.next_action.tool_name == "finish"

@@ -66,6 +66,54 @@ def orchestrator(sample_manifests):
     return Orchestrator(tools, knowledge, schemas)
 
 
+def test_orchestrator_run_integration(monkeypatch):
+    """
+    Integration test for Orchestrator.run with mocked PlannerAgent and KnowledgeStore.
+    """
+    from src.prp_compiler.orchestrator import Orchestrator
+    from src.prp_compiler.models import ReActStep, Thought, Action
+
+    # Dummy primitive loader with minimal structure
+    class DummyPrimitiveLoader:
+        primitives = {
+            'schemas': {
+                'standard_prp': {'content': 'SCHEMA_CONTENT'}
+            },
+            'patterns': {
+                'pattern1': {'content': 'PATTERN_CONTENT'}
+            }
+        }
+
+    # Mock PlannerAgent to return two steps: retrieve_knowledge then finish
+    class DummyPlanner:
+        def run_planning_loop(self, user_goal, max_steps=10):
+            retrieve_action = Action(tool_name="retrieve_knowledge", arguments={"query": "test query"})
+            finish_action = Action(tool_name="finish", arguments={"schema_choice": "standard_prp", "pattern_references": ["pattern1"]})
+            step1 = ReActStep(thought=Thought(reasoning="r1", criticism="c1", next_action=retrieve_action))
+            step2 = ReActStep(thought=Thought(reasoning="r2", criticism="c2", next_action=finish_action))
+            return [step1, step2]
+
+    # Mock KnowledgeStore
+    class DummyKnowledgeStore:
+        def __init__(self):
+            self.last_query = None
+        def retrieve(self, query):
+            self.last_query = query
+            return ["MOCK_KNOWLEDGE"]
+
+    dummy_loader = DummyPrimitiveLoader()
+    dummy_knowledge = DummyKnowledgeStore()
+    orchestrator = Orchestrator(dummy_loader, dummy_knowledge)
+    orchestrator.planner = DummyPlanner()  # Inject mock planner
+
+    user_goal = "Write a PRP for X"
+    schema, context = orchestrator.run(user_goal)
+    assert schema == 'SCHEMA_CONTENT'
+    assert 'MOCK_KNOWLEDGE' in context
+    assert 'PATTERN_CONTENT' in context
+    assert dummy_knowledge.last_query == "test query"
+
+
 def test_assemble_context_concatenates_content(orchestrator, temp_capabilities):
     """Tests that assemble_context reads and concatenates the full file contents."""
     plan = ExecutionPlan(

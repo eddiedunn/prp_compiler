@@ -9,6 +9,10 @@ dependencies = [
     "PyYAML",
     "pydantic",
     "tiktoken",
+    "langchain",
+    "langchain-openai",
+    "chromadb",
+    "semantic-version",
 ]
 
 [project.scripts]

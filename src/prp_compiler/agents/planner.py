@@ -1,87 +1,82 @@
-from typing import List
 import json
+from typing import List, Dict, Any
 from .base_agent import BaseAgent
-from ..models import ExecutionPlan, ManifestItem
+from ..models import ReActStep, Thought, Action
+from ..primitives import PrimitiveLoader
 
-PLANNER_PROMPT_TEMPLATE = """
-You are an expert AI engineering architect. Your task is to create an execution plan for building a comprehensive Product Requirement Prompt (PRP).
+# This is the new, more sophisticated prompt for the ReAct loop.
+REACT_PROMPT_TEMPLATE = """
+You are an expert AI engineering architect. Your goal is to gather all necessary information to create a comprehensive PRP for the user's goal.
+You operate in a loop of Thought -> Action -> Observation.
 
-**User's Goal:**
-"{user_goal}"
+1.  **Thought:** First, you think about the user's goal and your plan. You critique your own plan and decide what single action to take next.
+2.  **Action:** You choose one of the available tools to execute.
 
-**Available Resources:**
-- **Tools:** {tools_manifest}
-- **Knowledge:** {knowledge_manifest}
-- **Schemas:** {schemas_manifest}
+You have access to the following tools:
+{tools_json_schema}
 
-**Instructions:**
-Based on the user's goal and the available resources, create an execution plan. Your output **must** be a single, valid JSON object that adheres strictly to the following structure. Do not add any extra commentary or explanations outside of the JSON object.
+Your history of thoughts, actions, and observations so far:
+{history}
 
-**Required JSON Structure:**
-```json
-{{
-    "tool_plan": [
-        {{
-            "command_name": "<name_of_tool_from_manifest>",
-            "arguments": "<arguments_for_the_tool>"
-        }}
-    ],
-    "knowledge_plan": [
-        "<name_of_knowledge_doc_from_manifest>"
-    ],
-    "schema_choice": "<name_of_schema_from_manifest>"
-}}
-```
+User's Goal: "{user_goal}"
 
-**Example:**
-```json
-{{
-    "tool_plan": [
-        {{
-            "command_name": "file_lister",
-            "arguments": "--directory /src/components"
-        }}
-    ],
-    "knowledge_plan": [
-        "prp_best_practices"
-    ],
-    "schema_choice": "standard_prp"
-}}
-```
-
-Now, generate the JSON execution plan based on the user's goal.
+Based on your history, what is your next thought and action? If you have gathered enough information, your action should be to call the "finish" tool.
 """
 
-
 class PlannerAgent(BaseAgent):
-    """Agent responsible for creating an execution plan."""
+    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"):
+        super().__init__(model_name=model_name)
+        self.primitive_loader = primitive_loader
+        # Convert primitive manifests to Gemini-compatible tool schemas
+        self.tools_schema = self._create_tools_schema()
 
-    def plan(
-        self,
-        user_goal: str,
-        tools_manifest: List[ManifestItem],
-        knowledge_manifest: List[ManifestItem],
-        schemas_manifest: List[ManifestItem],
-        constitution: str,
-    ) -> ExecutionPlan:
-        """
-        Generates an execution plan by calling the LLM.
-        """
-        # Convert lists of Pydantic models to lists of dicts, then to JSON strings
-        tools_str = json.dumps([item.model_dump() for item in tools_manifest], indent=2)
-        knowledge_str = json.dumps([item.model_dump() for item in knowledge_manifest], indent=2)
-        schemas_str = json.dumps([item.model_dump() for item in schemas_manifest], indent=2)
+    def _create_tools_schema(self) -> List[Dict[str, Any]]:
+        # Logic to convert your action manifests into the OpenAPI schema Gemini expects.
+        # For now, we can hardcode a few for the purpose of this implementation.
+        return [
+            {
+                "name": "retrieve_knowledge",
+                "description": "Retrieve chunks of curated knowledge documents relevant to a query.",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+            },
+            {
+                "name": "web_search",
+                "description": "Performs a web search.",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+            },
+            {
+                "name": "finish",
+                "description": "Call this when you have gathered all necessary information and are ready to finalize the PRP.",
+                "parameters": {"type": "object", "properties": {"schema_choice": {"type": "string"}, "pattern_references": {"type": "array", "items": {"type": "string"}}}}
+            }
+        ]
 
-        prompt = constitution + "\n\n" + PLANNER_PROMPT_TEMPLATE.format(
-            user_goal=user_goal,
-            tools_manifest=tools_str,
-            knowledge_manifest=knowledge_str,
-            schemas_manifest=schemas_str,
-        )
-
-        response = self.model.generate_content(prompt)
-        cleaned_response = self._clean_json_response(response.text)
-
-        # Validate and parse the response into the Pydantic model
-        execution_plan = ExecutionPlan.model_validate_json(cleaned_response)
-        return execution_plan
+    def run_planning_loop(self, user_goal: str, max_steps: int = 10) -> List[ReActStep]:
+        history: List[ReActStep] = []
+        for i in range(max_steps):
+            prompt = REACT_PROMPT_TEMPLATE.format(
+                user_goal=user_goal,
+                tools_json_schema=json.dumps(self.tools_schema, indent=2),
+                history="".join([
+                    f"Thought: {s.thought.reasoning}\nObservation: {s.observation}\n" for s in history
+                ])
+            )
+            # Make the API call with tool-calling enabled
+            response = self.model.generate_content(prompt, tools=self.tools_schema)
+            # Extract the function call from the response
+            fc = response.candidates[0].content.parts[0].function_call
+            # Parse the thought and action
+            thought = Thought(
+                reasoning=f"Step {i+1}",
+                criticism="N/A",
+                next_action=Action(tool_name=fc.name, arguments=dict(fc.args))
+            )
+            step = ReActStep(thought=thought)
+            history.append(step)
+            # If the agent decides to finish, break the loop
+            if step.thought.next_action is not None and step.thought.next_action.tool_name == "finish":
+                break
+            # NOTE: We are NOT executing the action here. We are just yielding it.
+            # The Orchestrator will execute it and feed the observation back in.
+            # For this PRP, we will just return the history of decisions.
+        return history

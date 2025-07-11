@@ -2,11 +2,10 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
-
-from typing import List, Tuple
+from typing import Tuple
 from .config import ALLOWED_SHELL_COMMANDS
-from .models import ManifestItem, ExecutionPlan
-
+from .models import ExecutionPlan
+from .agents.planner import PlannerAgent, Action
 
 def load_constitution(root_path: Path) -> str:
     """Loads the constitution from CLAUDE.md at the project root."""
@@ -16,21 +15,63 @@ def load_constitution(root_path: Path) -> str:
     return ""
 
 
+
 class Orchestrator:
     """
-    Orchestrates the execution of tasks, including resolving dynamic content.
+    Orchestrates the execution of tasks, including resolving dynamic content and driving the ReAct loop.
+    Supports both legacy (manifest-based) and new (primitive_loader/knowledge_store) initialization for backward compatibility.
     """
 
-    def __init__(
-        self,
-        tools_manifest: List[ManifestItem],
-        knowledge_manifest: List[ManifestItem],
-        schemas_manifest: List[ManifestItem],
-    ):
-        """Initializes the Orchestrator with manifests for lookup."""
-        self.tools_manifest = {item.name: item for item in tools_manifest}
-        self.knowledge_manifest = {item.name: item for item in knowledge_manifest}
-        self.schemas_manifest = {item.name: item for item in schemas_manifest}
+    def __init__(self, *args, **kwargs):
+        # Legacy: (tools_manifest, knowledge_manifest, schemas_manifest)
+        # New: (primitive_loader, knowledge_store)
+        if len(args) == 3 and all(isinstance(arg, list) for arg in args):
+            # Legacy manifest-based init
+            tools_manifest, knowledge_manifest, schemas_manifest = args
+            self.tools_manifest = {item.name: item for item in tools_manifest}
+            self.knowledge_manifest = {item.name: item for item in knowledge_manifest}
+            self.schemas_manifest = {item.name: item for item in schemas_manifest}
+            self.legacy_mode = True
+        elif len(args) == 2:
+            # New ReAct init
+            self.primitive_loader = args[0]
+            self.knowledge_store = args[1]
+            self.planner = PlannerAgent(self.primitive_loader)
+            self.legacy_mode = False
+        else:
+            raise TypeError("Orchestrator must be initialized with either (tools_manifest, knowledge_manifest, schemas_manifest) or (primitive_loader, knowledge_store)")
+
+    def execute_action(self, action: Action) -> str:
+        """Executes a single action from the planner and returns the observation."""
+        if action.tool_name == "retrieve_knowledge":
+            query = action.arguments.get("query", "")
+            results = self.knowledge_store.retrieve(query)
+            return f"Retrieved {len(results)} knowledge chunks for query: '{query}'\nContent:\n" + "\n".join(results)
+        # Here you would add logic for other tools like web_search
+        # For now, we return a placeholder for any other tool
+        else:
+            return f"Observation: Executed tool '{action.tool_name}' with args {action.arguments}. [Mocked Result]"
+
+    def run(self, user_goal: str) -> Tuple[str, str]:
+        """Drives the main ReAct loop and assembles the final context."""
+        max_steps = 10
+        for _ in range(max_steps):
+            planning_steps = self.planner.run_planning_loop(user_goal)
+            final_context_parts = []
+            final_plan = None
+            for step in planning_steps:
+                if step.thought.next_action.tool_name == "finish":
+                    final_plan = step.thought.next_action.arguments
+                    break
+                observation = self.execute_action(step.thought.next_action)
+                step.observation = observation
+                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {step.thought.next_action.tool_name}\nObservation: {observation}")
+            if final_plan:
+                schema_template = self.primitive_loader.primitives['schemas'][final_plan['schema_choice']]['content']
+                for pattern_name in final_plan.get('pattern_references', []):
+                    final_context_parts.append(self.primitive_loader.primitives['patterns'][pattern_name]['content'])
+                return schema_template, "\n---\n".join(final_context_parts)
+        raise RuntimeError("Planner failed to finish within max steps.")
 
     def assemble_context(self, plan: ExecutionPlan) -> Tuple[str, str]:
         """
