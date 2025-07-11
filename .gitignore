@@ -1,0 +1,8 @@
+    __pycache__/
+    *.pyc
+    .env
+    /manifests/
+    /tests/temp_*/
+    build/
+    dist/
+    *.egg-info

@@ -1,0 +1,18 @@
+    [project]
+    name = "prp-compiler"
+    version = "0.1.0"
+    description = "An agentic system for compiling high-fidelity PRPs."
+    requires-python = ">=3.9"
+    dependencies = [
+        "google-generativeai",
+        "python-dotenv",
+        "PyYAML",
+        "pydantic",
+        "tiktoken",
+    ]
+
+    [project.scripts]
+    prp-compiler = "prp_compiler.main:run"
+
+    [tool.pytest.ini_options]
+    pythonpath = ["src"]
