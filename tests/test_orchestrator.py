@@ -44,7 +44,11 @@ def test_execute_action_resolves_template(mock_loader, mock_knowledge_store):
     """
     # Arrange
     action_name = "web_search"
-    template = "Perform a web search for: \"$ARGUMENTS[query]\""
+    # FIX 2: Use the new argument syntax from orchestrator.py
+    template = 'Perform a web search for: "$ARGUMENTS(query)"'
+
+    # FIX 1: Unset the fixture's side_effect so return_value can be used.
+    mock_loader.get_primitive_content.side_effect = None
     mock_loader.get_primitive_content.return_value = template
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)

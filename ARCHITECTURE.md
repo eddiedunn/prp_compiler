@@ -39,6 +39,11 @@ graph TD
         M -- Is compared against --> O;
         O --> P((Pass/Fail));
     end
+
+    style I fill:#cde,stroke:#333
+    style J fill:#cde,stroke:#333
+    style H fill:#f9f,stroke:#333,stroke-width:2px
+    style L fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 ## Core Components

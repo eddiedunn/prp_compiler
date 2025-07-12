@@ -19,18 +19,43 @@ def find_golden_cases():
                 cases.append((subdir.name, goal_md, expected_json))
     return cases
 
+# Helper to create a valid mock for the PlannerAgent.
+# This version ensures `fc.args` is a dict, as the planner expects.
+def make_mock_planner_response(tool_name, args):
+    fc = MagicMock()
+    fc.name = tool_name
+    fc.args = args  # The planner agent's `dict(fc.args)` works on a real dict.
+    part = MagicMock(function_call=fc)
+    candidate = MagicMock(content=MagicMock(parts=[part]))
+    return MagicMock(candidates=[candidate])
+
+
+@pytest.fixture
+def mock_primitive_loader():
+    """Fixture to mock PrimitiveLoader to provide a required schema."""
+    loader = MagicMock()
+    # This is the schema content the test needs.
+    schema_content = json.dumps({"name": "base_feature_prp", "description": "..."})
+    loader.get_primitive_content.return_value = schema_content
+    return loader
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("name, goal_md, expected_json_path", find_golden_cases())
-@patch("google.generativeai.GenerativeModel.generate_content")
+@patch("src.prp_compiler.main.PrimitiveLoader") # Patch where it's instantiated
+@patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel") # Patch where it's used
 def test_golden_prp(
-    mock_generate_content,
+    mock_generative_model,
+    mock_loader_class,
     name,
     goal_md,
     expected_json_path,
     tmp_path,
     temp_agent_dir,
+    mock_primitive_loader, # Use the fixture
 ):
     # Arrange
+    mock_loader_class.return_value = mock_primitive_loader
     runner = CliRunner()
     output_file = tmp_path / "output.json"
     goal = goal_md.read_text()
@@ -39,15 +64,17 @@ def test_golden_prp(
         expected_output = json.load(f)
 
     # Mock the sequence of LLM calls.
-    # The first call is for the Planner, the second is for the Synthesizer.
-    # This is a simplified mock; a real test would have case-specific responses.
-    mock_planner_response_text = '```json\n{"tool_plan": [{"tool_name": "web_search", "arguments": {"query": "how to copy a file"}}], "knowledge_plan": [], "schema_choice": "prp_base/1.0.0"}\n```'
-    mock_synthesizer_response_text = json.dumps(expected_output)
+    mock_planner_response = make_mock_planner_response(
+        "finish",
+        {"schema_choice": "base_feature_prp", "pattern_references": []},
+    )
+    mock_synthesizer_response = MagicMock(text=json.dumps(expected_output))
 
-    # The mock will return these in order
-    mock_generate_content.side_effect = [
-        MagicMock(text=mock_planner_response_text),
-        MagicMock(text=mock_synthesizer_response_text),
+    # Configure the mock instance that will be created in the agent's __init__
+    mock_instance = mock_generative_model.return_value
+    mock_instance.generate_content.side_effect = [
+        mock_planner_response,
+        mock_synthesizer_response,
     ]
 
     # Act
@@ -64,12 +91,10 @@ def test_golden_prp(
     )
 
     # Assert
-    assert result.exit_code == 0, f"CLI command failed for case '{name}': {result.stdout}"
+    assert result.exit_code == 0, f"CLI command failed for case '{name}': {result.stdout}\n{result.stderr}"
     assert output_file.exists()
 
     with open(output_file, "r") as f:
         generated_output = json.load(f)
 
-    assert (
-        generated_output == expected_output
-    ), f"Output mismatch for case '{name}'"
+    assert generated_output == expected_output, f"Output mismatch for case '{name}'"

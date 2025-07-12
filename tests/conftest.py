@@ -1,25 +1,23 @@
-from unittest.mock import patch
-
+import json
+from unittest.mock import patch, MagicMock
 import pytest
 
 
 @pytest.fixture(autouse=True)
-def mock_gemini_model():
-    """Globally mocks the Gemini model to prevent actual API calls during tests."""
-    # Patching where the model is used in the agents
-    with patch(
-        "src.prp_compiler.agents.base_agent.genai.GenerativeModel"
-    ) as mock_agent_model:
-        # You can configure the mock's behavior here if needed for all tests
-        # For example, setting a default return value for a method.
-        yield mock_agent_model
-
+def mock_google_embeddings(monkeypatch):
+    """Globally mocks GoogleGenerativeAIEmbeddings to prevent auth errors."""
+    mock_embeddings_class = MagicMock()
+    mock_instance = mock_embeddings_class.return_value
+    # The mock needs to return a list of lists for the embeddings
+    mock_instance.embed_documents.return_value = [[1.0, 2.0, 3.0]]
+    monkeypatch.setattr(
+        "src.prp_compiler.knowledge.GoogleGenerativeAIEmbeddings",
+        mock_embeddings_class
+    )
 
 @pytest.fixture
 def mock_configure_gemini(monkeypatch):
     """Fixture to mock configure_gemini to prevent real API calls in CLI tests."""
-    from unittest.mock import MagicMock
-
     mock = MagicMock()
     monkeypatch.setattr("src.prp_compiler.config.configure_gemini", mock)
     yield mock

@@ -6,3 +6,12 @@
     build/
     dist/
     *.egg-info
+
+# Local database
+chroma_db/
+
+# Virtual environment
+.venv/
+
+# Test artifacts
+.pytest_cache/

@@ -20,24 +20,26 @@ def make_mock_gemini_response(tool_name, args):
     candidate = MagicMock(content=MagicMock(parts=[part]))
     return MagicMock(candidates=[candidate])
 
-def test_run_planning_loop(mock_primitive_loader):
+@patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel")
+def test_run_planning_loop(mock_generative_model, mock_primitive_loader):
     # Arrange
+    mock_instance = mock_generative_model.return_value
     planner = PlannerAgent(mock_primitive_loader)
-    
+
     # Mock a sequence of two responses from the Gemini model
     retrieve_response = make_mock_gemini_response('retrieve_knowledge', {"query": "test"})
     finish_response = make_mock_gemini_response('finish', {"schema_choice": "final_schema", "pattern_references": ["p1"]})
-    planner.model.generate_content.side_effect = [retrieve_response, finish_response]
-    
+    mock_instance.generate_content.side_effect = [retrieve_response, finish_response]
+
     # Act
     planner_gen = planner.run_planning_loop("test goal", constitution="")
-    
+
     # Step 1: Prime the generator and send the first observation to get the first action
     next(planner_gen)  # Prime the generator
     first_step = planner_gen.send("No observation yet. Start by thinking about the user's goal.")
     assert isinstance(first_step, ReActStep)
     assert first_step.thought.next_action.tool_name == "retrieve_knowledge"
-    
+
     # Step 2: Send observation and catch the end of the loop
     # This should yield the finish step
     try:
@@ -55,7 +57,7 @@ def test_run_planning_loop(mock_primitive_loader):
 
     # Assert
     assert final_args == {"schema_choice": "final_schema", "pattern_references": ["p1"]}
-    assert planner.model.generate_content.call_count == 2
+    assert mock_instance.generate_content.call_count == 2
     # Check that the history was passed to the second call
-    second_call_prompt = planner.model.generate_content.call_args_list[1][0][0]
+    second_call_prompt = mock_instance.generate_content.call_args_list[1][0][0]
     assert "Observation from retrieve" in second_call_prompt

@@ -11,22 +11,21 @@ All agent capabilities are defined as "primitives" within the `agent_primitives/
 Actions are executable tools for the Planner agent to use during its research phase.
 
 1.  **Create a Directory:** Create a new directory under `agent_primitives/actions/<your_action_name>/<version>/`. Use semantic versioning (e.g., `1.0.0`).
-2.  **Create `manifest.json`:** This file describes your action.
-    ```json
-    {
-      "name": "your_action_name",
-      "type": "action",
-      "version": "1.0.0",
-      "entrypoint": "your_action.py:run", // Path to the Python function
-      "inputs_schema": {
-        "type": "object",
-        "properties": {
-          "arg1": {"type": "string", "description": "Description of arg1."}
-        },
-        "required": ["arg1"]
-      },
-      "description": "A brief description of what this action does."
-    }
+2.  **Create `manifest.yml`:** This file describes your action.
+    ```yaml
+    name: "your_action_name"
+    type: "action"
+    version: "1.0.0"
+    description: "A brief description of what this action does."
+    entrypoint: "your_action.py:run" # Path to the Python function
+    inputs_schema:
+      type: "object"
+      properties:
+        arg1:
+          type: "string"
+          description: "Description of arg1."
+      required:
+        - "arg1"
     ```
 3.  **Create the Python script** (`your_action.py`) specified in the `entrypoint`. It must contain a `run` function that accepts the arguments defined in your schema.
 
@@ -35,16 +34,16 @@ Actions are executable tools for the Planner agent to use during its research ph
 Knowledge documents are long-form texts that are embedded and stored in the RAG vector database.
 
 1.  **Create a Directory:** `agent_primitives/knowledge/<your_knowledge_topic>/<version>/`.
-2.  **Create `manifest.json`:**
-    ```json
-    {
-      "name": "your_knowledge_topic",
-      "type": "knowledge",
-      "version": "1.0.0",
-      "entrypoint": "content.md", // The name of the markdown file
-      "description": "A detailed guide on a specific topic.",
-      "keywords": ["keyword1", "keyword2"]
-    }
+2.  **Create `manifest.yml`:**
+    ```yaml
+    name: "your_knowledge_topic"
+    type: "knowledge"
+    version: "1.0.0"
+    description: "A detailed guide on a specific topic."
+    entrypoint: "content.md" # The name of the markdown file
+    keywords:
+      - "keyword1"
+      - "keyword2"
     ```
 3.  **Add your `content.md` file** in the same directory.
 4.  **Re-build the knowledge store:** After adding the file, run `prp-compiler build-knowledge` (Note: we need to add this command to `main.py`).

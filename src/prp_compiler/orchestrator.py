@@ -46,15 +46,12 @@ class Orchestrator:
             context_with_args = raw_template
             for key, value in action.arguments.items():
                 context_with_args = context_with_args.replace(
-                    f"$ARGUMENTS[{key}]", str(value)
+                    f"$ARGUMENTS({key})", str(value)
                 )
 
             # 3. Resolve dynamic content like ! and @
             resolved_content = self._resolve_dynamic_content(context_with_args)
             return resolved_content
-        except Exception as e:
-            return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
-
         except (ImportError, AttributeError, TypeError, Exception) as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
