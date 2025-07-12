@@ -8,7 +8,9 @@ from semantic_version import Version  # type: ignore
 class PrimitiveLoader:
     def __init__(self, base_path: Path):
         if not base_path.is_dir():
-            raise FileNotFoundError(f"Primitives base path does not exist: {base_path}")
+            raise FileNotFoundError(
+                f"Primitives base path does not exist: {base_path}"
+            )
         self.base_path = base_path
         self.primitives = self._load_all()
 

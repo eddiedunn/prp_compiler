@@ -1,5 +1,5 @@
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
+
 import pytest
 
 
@@ -25,7 +25,10 @@ def mock_configure_gemini(monkeypatch):
 
 @pytest.fixture(scope="session")
 def temp_agent_dir(tmp_path_factory):
-    """Creates a temporary agent_capabilities directory with dummy files for session-wide use."""
+    """
+    Creates a temporary agent_capabilities directory with dummy files for
+    session-wide use.
+    """
     base_path = tmp_path_factory.mktemp("agent_capabilities_session")
 
     # Define paths

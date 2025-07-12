@@ -2,7 +2,7 @@ name: "list_directory"
 type: "action"
 version: "1.0.0"
 description: "Lists the contents of a directory, optionally recursively, to understand project structure."
-entrypoint: "template.md"
+entrypoint: "list_directory.py:run"
 inputs_schema:
   type: "object"
   properties:

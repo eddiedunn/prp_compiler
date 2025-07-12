@@ -15,25 +15,6 @@ def mock_orchestrator(monkeypatch):
             pass
 
         def run(self, goal, constitution):
-            schema_dict = {
-                "type": "object",
-                "properties": {
-                    "goal": {"type": "string"},
-                    "why": {"type": "string"},
-                    "what": {"type": "object"},
-                    "context": {"type": "object"},
-                    "implementation_blueprint": {"type": "object"},
-                    "validation_loop": {"type": "object"},
-                },
-                "required": [
-                    "goal",
-                    "why",
-                    "what",
-                    "context",
-                    "implementation_blueprint",
-                    "validation_loop",
-                ],
-            }
             return (
                 "test_schema",
                 "dummy context",
@@ -50,7 +31,10 @@ def mock_primitive_loader(monkeypatch):
 
         def get_primitive_content(self, p_type, name):
             if p_type == "schemas" and name == "test_schema":
-                schema_dict = {"type": "object", "properties": {"goal": {"type": "string"}}}
+                schema_dict = {
+                    "type": "object",
+                    "properties": {"goal": {"type": "string"}},
+                }
                 return json.dumps(schema_dict)
             return ""
 
@@ -95,7 +79,11 @@ def mock_knowledge_store(monkeypatch):
 
 
 def test_cli_compile_command(
-    mock_orchestrator, mock_synthesizer, mock_configure_gemini, mock_knowledge_store, mock_primitive_loader
+    mock_orchestrator,
+    mock_synthesizer,
+    mock_configure_gemini,
+    mock_knowledge_store,
+    mock_primitive_loader,
 ):
     runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmpdir:

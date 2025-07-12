@@ -12,8 +12,12 @@ class ManifestItem(BaseModel):
 
 
 class Action(BaseModel):
-    tool_name: str = Field(description="The name of the tool/action to be executed.")
-    arguments: dict = Field(description="The arguments for the tool, as a dictionary.")
+    tool_name: str = Field(
+        description="The name of the tool/action to be executed."
+    )
+    arguments: dict = Field(
+        description="The arguments for the tool, as a dictionary."
+    )
 
 
 class Thought(BaseModel):

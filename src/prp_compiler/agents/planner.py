@@ -1,9 +1,9 @@
 import json
-from typing import List, Dict, Any, Generator
+from typing import Any, Dict, List
 
-from .base_agent import BaseAgent
-from ..models import ReActStep, Thought, Action
+from ..models import Action, ReActStep, Thought
 from ..primitives import PrimitiveLoader
+from .base_agent import BaseAgent
 
 REACT_PROMPT_TEMPLATE = """
 You are an expert AI engineering architect. Your task is to build a context buffer by reasoning and acting in a loop to gather all necessary information to create a comprehensive PRP for the user's goal.
@@ -27,43 +27,70 @@ Based on the full history above and the user's goal, what is your next thought a
 """
 
 class PlannerAgent(BaseAgent):
-    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"):
+    def __init__(
+        self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"
+    ):
         super().__init__(model_name=model_name)
         self.primitive_loader = primitive_loader
         self.tools_schema = self._create_tools_schema()
 
     def _create_tools_schema(self) -> List[Dict[str, Any]]:
-        """Dynamically builds the tools schema from PrimitiveLoader action manifests for Gemini."""
+        """Dynamically builds the tools schema from PrimitiveLoader action manifests."""
         actions = self.primitive_loader.get_all('actions')
-        
+
         # Add the static 'finish' action to the list of actions to be processed
-        actions.append({
-            "name": "finish",
-            "description": "Call this when you have gathered all necessary information to write the PRP.",
-            "inputs_schema": {
-                "type": "object",
-                "properties": {
-                    "schema_choice": {"type": "string", "description": "The name of the final output schema to use."},
-                    "pattern_references": {"type": "array", "items": {"type": "string"}, "description": "List of relevant pattern names to include as context."}
+        actions.append(
+            {
+                "name": "finish",
+                "description": (
+                    "Call this when you have gathered all necessary information to write the PRP."
+                ),
+                "inputs_schema": {
+                    "type": "object",
+                    "properties": {
+                        "schema_choice": {
+                            "type": "string",
+                            "description": "The name of the final output schema.",
+                        },
+                        "pattern_references": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": (
+                                "List of relevant pattern names to include as context."
+                            ),
+                        },
+                    },
+                    "required": ["schema_choice", "pattern_references"],
                 },
-                "required": ["schema_choice", "pattern_references"]
             }
-        })
+        )
 
         gemini_tools = []
         for action in actions:
             # Start with the base schema from the manifest
             schema = action.get('inputs_schema', {'type': 'object', 'properties': {}})
-            
+
             # Define the standard ReAct thought properties
             thought_properties = {
-                "reasoning": {"type": "string", "description": "Your detailed reasoning for choosing this action. Explain why this specific tool is the best choice right now."},
-                "criticism": {"type": "string", "description": "A critique of your own reasoning and plan. What are the flaws in your current approach? What could go wrong?"}
+                "reasoning": {
+                    "type": "string",
+                    "description": (
+                        "Your detailed reasoning for choosing this action. Explain why "
+                        "this specific tool is the best choice right now."
+                    ),
+                },
+                "criticism": {
+                    "type": "string",
+                    "description": (
+                        "A critique of your own reasoning and plan. What are the flaws "
+                        "in your current approach? What could go wrong?"
+                    ),
+                },
             }
-            
+
             # Inject thought properties into the schema
             schema['properties'].update(thought_properties)
-            
+
             # Ensure 'reasoning' and 'criticism' are required
             if 'required' not in schema:
                 schema['required'] = []
@@ -77,44 +104,29 @@ class PlannerAgent(BaseAgent):
 
         return gemini_tools
 
-    def run_planning_loop(self, user_goal: str, constitution: str, max_steps: int = 10) -> Generator[ReActStep, str, dict]:
-        """Drives the ReAct loop, yielding each action and receiving observations."""
-        history = []
-        observation = "No observation yet. Start by thinking about the user's goal."
+    def plan_step(
+        self, user_goal: str, constitution: str, history: List[str]
+    ) -> ReActStep:
+        """Performs a single step of reasoning to produce a thought and an action."""
+        prompt = constitution + "\n\n" + REACT_PROMPT_TEMPLATE.format(
+            user_goal=user_goal,
+            tools_json_schema=json.dumps(self.tools_schema, indent=2),
+            history="\n".join(history),
+        )
 
-        yield  # Prime the generator to receive the first observation
+        response = self.model.generate_content(prompt, tools=self.tools_schema)
+        fc_part = response.candidates[0].content.parts[0]
 
-        for i in range(max_steps):
-            prompt = constitution + "\n\n" + REACT_PROMPT_TEMPLATE.format(
-                user_goal=user_goal,
-                tools_json_schema=json.dumps(self.tools_schema, indent=2),
-                history="\n".join(history)
-            )
+        if not hasattr(fc_part, "function_call"):
+            raise ValueError("Planner Agent did not return a function call.")
 
-            response = self.model.generate_content(prompt, tools=self.tools_schema)
-            fc_part = response.candidates[0].content.parts[0]
+        fc = fc_part.function_call
+        action_args = dict(fc.args) if hasattr(fc, "args") else {}
 
-            if not hasattr(fc_part, 'function_call'):
-                raise ValueError("Planner Agent did not return a function call.")
+        reasoning = action_args.pop("reasoning", "")
+        criticism = action_args.pop("criticism", "")
 
-            fc = fc_part.function_call
-            action_args = dict(fc.args) if hasattr(fc, 'args') else {}
+        action = Action(tool_name=fc.name, arguments=action_args)
 
-            reasoning = action_args.pop("reasoning", "")
-            criticism = action_args.pop("criticism", "")
-
-            action = Action(tool_name=fc.name, arguments=action_args)
-
-            thought = Thought(reasoning=reasoning, criticism=criticism, next_action=action)
-            step = ReActStep(thought=thought)
-
-            # The 'finish' action is yielded, and then the loop terminates.
-            if action.tool_name == "finish":
-                yield step
-                return action.arguments
-
-            # Yield the step and wait for the orchestrator to send back the observation.
-            observation = yield step
-            history.append(f"Action: {action.tool_name}({action.arguments})\nObservation: {observation}")
-        
-        raise RuntimeError("Planner exceeded max steps without calling 'finish'.")
+        thought = Thought(reasoning=reasoning, criticism=criticism, next_action=action)
+        return ReActStep(thought=thought)

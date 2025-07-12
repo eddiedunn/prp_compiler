@@ -1,10 +1,8 @@
 import importlib
-
 from pathlib import Path
 from typing import Tuple
 
 from .agents.planner import Action, PlannerAgent
-from .config import ALLOWED_SHELL_COMMANDS
 from .knowledge import KnowledgeStore
 from .primitives import PrimitiveLoader
 
@@ -30,33 +28,28 @@ class Orchestrator:
         self.planner = PlannerAgent(self.primitive_loader)
 
     def execute_action(self, action: Action) -> str:
-        """Dynamically loads and executes an action primitive."""
+        """Dynamically loads and executes an action primitive from its file path."""
         try:
-            # Get the entrypoint module and function from the primitive's manifest
-            module_str, function_str = self.primitive_loader.get_action_entrypoint(
-                action.tool_name
-            )
-
-            # Get the manifest to construct the full import path
-            action_manifest = self.primitive_loader.primitives.get("actions", {}).get(
-                action.tool_name
-            )
+            actions = self.primitive_loader.primitives.get("actions", {})
+            action_manifest = actions.get(action.tool_name)
             if not action_manifest:
-                raise ValueError(f"Manifest for action '{action.tool_name}' not found.")
+                raise ValueError(f"Action '{action.tool_name}' not found in manifest.")
 
-            version = action_manifest["version"]
-            module_name = module_str.replace(".py", "")
+            # The entrypoint is now 'module.py:function'
+            module_str, function_str = action_manifest["entrypoint"].split(":")
+            # The base_path from the manifest gives us the versioned directory
+            entrypoint_path = Path(action_manifest["base_path"]) / module_str
 
-            # Construct the full, correct import path for the action module
-            # e.g., prp_compiler.primitives.actions.web_search.1_0_0.web_search
-            import_path = (
-                f"prp_compiler.primitives.actions.{action.tool_name}.v{version.replace('.', '_')}.{module_name}"
+            # Use importlib.util to load the module from its path
+            spec = importlib.util.spec_from_file_location(
+                action.tool_name, entrypoint_path
             )
+            if not spec or not spec.loader:
+                raise ImportError(f"Could not create module spec for {entrypoint_path}")
 
-            # Dynamically import the module
-            action_module = importlib.import_module(import_path)
+            action_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(action_module)
 
-            # Get the function from the module
             action_function = getattr(action_module, function_str)
 
             # Execute the function with its arguments and return the result as a string
@@ -66,22 +59,19 @@ class Orchestrator:
         except Exception as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
-    def run(self, user_goal: str, constitution: str, max_steps: int = 10) -> Tuple[str, str]:
+    def run(
+        self, user_goal: str, constitution: str, max_steps: int = 10
+    ) -> Tuple[str, str]:
         """Drives the main ReAct loop and assembles the final context."""
-        planner_gen = self.planner.run_planning_loop(
-            user_goal, constitution, max_steps=max_steps
-        )
-        final_context_parts = []
+        history = [
+            "Observation: No observation yet. Start by thinking about the user's goal."
+        ]
+        final_context_parts = list(history)
         final_plan_args = None
-        observation = "No observation yet. Start by thinking about the user's goal."
 
-        step = None
-        while True:
+        for i in range(max_steps):
             try:
-                # The first call to send() must be None.
-                # Subsequent calls send the observation.
-                current_observation = observation if step else None
-                step = planner_gen.send(current_observation)
+                step = self.planner.plan_step(user_goal, constitution, history)
 
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"
@@ -98,17 +88,26 @@ class Orchestrator:
                     break
 
                 observation = self.execute_action(action)
-                final_context_parts.append(f"Observation: {observation}")
+                observation_text = f"Observation: {observation}"
+                final_context_parts.append(observation_text)
 
-            except StopIteration as e:
-                final_plan_args = e.value
-                break
+                # Update history for the next step
+                history.append(thought_text)
+                history.append(action_text)
+                history.append(observation_text)
+
             except Exception as e:
                 return (
                     "",
                     f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
                     + "\n\n".join(final_context_parts),
                 )
+        else:  # This 'else' belongs to the 'for' loop
+            return (
+                "",
+                "[ERROR] Planner did not finish within max_steps.\n\n"
+                + "\n\n".join(final_context_parts),
+            )
 
         # After the loop, assemble the final context
         if not final_plan_args:
@@ -119,7 +118,9 @@ class Orchestrator:
             )
 
         schema_choice = final_plan_args.get("schema_choice", "")
-        schema_content = self.primitive_loader.get_primitive_content("schemas", schema_choice)
+        schema_content = self.primitive_loader.get_primitive_content(
+            "schemas", schema_choice
+        )
         final_context_parts.append(f"Schema: {schema_choice}\n{schema_content}")
 
         for pattern_ref in final_plan_args.get("pattern_references", []):
@@ -131,13 +132,5 @@ class Orchestrator:
             )
 
         final_context = "\n\n".join(final_context_parts)
-        # Return the schema *name* and the assembled context.
-        # The Synthesizer will use the name to load the schema itself.
         return (schema_choice, final_context)
-
-        return (
-            "",
-            "[ERROR] Planner did not finish within max_steps.\n\n"
-            + "\n\n".join(final_context_parts),
-        )
 

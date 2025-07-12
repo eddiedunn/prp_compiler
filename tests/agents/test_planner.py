@@ -1,14 +1,24 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from src.prp_compiler.agents.planner import PlannerAgent
 from src.prp_compiler.models import ReActStep
+
 
 @pytest.fixture
 def mock_primitive_loader():
     loader = MagicMock()
-    loader.get_all.return_value = [{
-        "name": "retrieve_knowledge", "description": "desc", "inputs_schema": {"type": "object", "properties": {"query": {"type": "string"}}}
-    }]
+    loader.get_all.return_value = [
+        {
+            "name": "retrieve_knowledge",
+            "description": "desc",
+            "inputs_schema": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+            },
+        }
+    ]
     return loader
 
 def make_mock_gemini_response(tool_name, args):
@@ -21,43 +31,42 @@ def make_mock_gemini_response(tool_name, args):
     return MagicMock(candidates=[candidate])
 
 @patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel")
-def test_run_planning_loop(mock_generative_model, mock_primitive_loader):
+def test_plan_step_returns_react_step(
+    mock_generative_model, mock_primitive_loader
+):
+    """Tests that a single call to plan_step returns a correctly formed ReActStep."""
     # Arrange
-    mock_instance = mock_generative_model.return_value
+    mock_model_instance = mock_generative_model.return_value
     planner = PlannerAgent(mock_primitive_loader)
 
-    # Mock a sequence of two responses from the Gemini model
-    retrieve_response = make_mock_gemini_response('retrieve_knowledge', {"query": "test"})
-    finish_response = make_mock_gemini_response('finish', {"schema_choice": "final_schema", "pattern_references": ["p1"]})
-    mock_instance.generate_content.side_effect = [retrieve_response, finish_response]
+    # Mock a single response from the Gemini model, including reasoning and criticism
+    mock_response_args = {
+        "reasoning": "I need to find information.",
+        "criticism": "This might be too broad.",
+        "query": "test query",
+    }
+    mock_response = make_mock_gemini_response("retrieve_knowledge", mock_response_args)
+    mock_model_instance.generate_content.return_value = mock_response
 
     # Act
-    planner_gen = planner.run_planning_loop("test goal", constitution="")
-
-    # Step 1: Prime the generator and send the first observation to get the first action
-    next(planner_gen)  # Prime the generator
-    first_step = planner_gen.send("No observation yet. Start by thinking about the user's goal.")
-    assert isinstance(first_step, ReActStep)
-    assert first_step.thought.next_action.tool_name == "retrieve_knowledge"
-
-    # Step 2: Send observation and catch the end of the loop
-    # This should yield the finish step
-    try:
-        finish_step = planner_gen.send("Observation from retrieve")
-        assert finish_step.thought.next_action.tool_name == "finish"
-    except StopIteration:
-        pytest.fail("Generator stopped prematurely. It should yield the 'finish' step.")
-
-    # Step 3: Sending again should raise StopIteration with the final arguments
-    try:
-        planner_gen.send("Another observation.")
-        pytest.fail("Generator did not stop after yielding finish action")
-    except StopIteration as e:
-        final_args = e.value
+    history = ["Observation: It all starts here."]
+    step = planner.plan_step("test goal", constitution="", history=history)
 
     # Assert
-    assert final_args == {"schema_choice": "final_schema", "pattern_references": ["p1"]}
-    assert mock_instance.generate_content.call_count == 2
-    # Check that the history was passed to the second call
-    second_call_prompt = mock_instance.generate_content.call_args_list[1][0][0]
-    assert "Observation from retrieve" in second_call_prompt
+    assert isinstance(step, ReActStep)
+
+    # Check thought
+    assert step.thought.reasoning == "I need to find information."
+    assert step.thought.criticism == "This might be too broad."
+
+    # Check action
+    assert step.thought.next_action.tool_name == "retrieve_knowledge"
+    assert step.thought.next_action.arguments == {"query": "test query"}
+
+    # Check that generate_content was called correctly
+    mock_model_instance.generate_content.assert_called_once()
+    call_args, call_kwargs = mock_model_instance.generate_content.call_args
+    prompt = call_args[0]
+    assert "test goal" in prompt
+    assert "Observation: It all starts here." in prompt
+

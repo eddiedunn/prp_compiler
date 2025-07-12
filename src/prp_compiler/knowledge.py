@@ -82,8 +82,9 @@ class KnowledgeStore:
         """Retrieves the k most relevant document chunks for a given query."""
         if not self.db:
             raise RuntimeError(
-                "KnowledgeStore is not built or loaded. Call .build() or .load() first."
-            )
+            "KnowledgeStore is not built or loaded. "
+            "Call .build() or .load() first."
+        )
         print(f"Retrieving knowledge for query: '{query}'")
         docs = self.db.similarity_search(query, k=k)
         return [doc.page_content for doc in docs]

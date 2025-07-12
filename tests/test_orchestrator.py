@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, patch, mock_open
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -6,35 +7,44 @@ from src.prp_compiler.models import Action, ReActStep, Thought
 from src.prp_compiler.orchestrator import Orchestrator
 
 
-
-
-
 @pytest.fixture
 def mock_knowledge_store():
-    """A pytest fixture to create a mocked KnowledgeStore.""" 
+    """A pytest fixture to create a mocked KnowledgeStore."""
     return MagicMock()
 
 
-@patch("importlib.import_module")
-def test_execute_action_dynamically_imports_and_runs_function(mock_import_module, mock_knowledge_store):
-    """ 
-    Tests that execute_action correctly imports and runs an action's Python function.
+@patch("importlib.util.module_from_spec")
+@patch("importlib.util.spec_from_file_location")
+def test_execute_action_dynamically_imports_and_runs_function(
+    mock_spec_from_file_location, mock_module_from_spec, mock_knowledge_store
+):
+    """
+    Tests that execute_action correctly loads and runs an action's Python
+    function from a file path.
     """
     # Arrange
     mock_loader = MagicMock()
-    mock_action_module = MagicMock()
-    mock_action_function = MagicMock(return_value={"status": "success", "files": ["a.txt"]})
-    mock_action_module.run = mock_action_function
-    mock_import_module.return_value = mock_action_module
-
-    # Configure the loader to return the entrypoint and the manifest
     action_name = "test_action"
-    mock_loader.get_action_entrypoint.return_value = ("test_action.py", "run")
+
+    # Mock the action's Python module and function
+    mock_action_function = MagicMock(return_value={"status": "success"})
+    mock_action_module = MagicMock()
+    mock_action_module.run = mock_action_function
+
+    # Mock the importlib.util machinery
+    mock_spec = MagicMock()
+    # This is needed because the real spec.loader is not None
+    mock_spec.loader.exec_module = MagicMock()
+    mock_spec_from_file_location.return_value = mock_spec
+    mock_module_from_spec.return_value = mock_action_module
+
+    # Configure the loader to return the manifest, including the base path
     mock_loader.primitives = {
         "actions": {
             action_name: {
                 "version": "1.0.0",
-                "entrypoint": "test_action.py:run"
+                "entrypoint": "test_action.py:run",
+                "base_path": "/fake/primitives/actions/test_action/1.0.0"
             }
         }
     }
@@ -46,19 +56,17 @@ def test_execute_action_dynamically_imports_and_runs_function(mock_import_module
     result = orchestrator.execute_action(action)
 
     # Assert
-    # 1. Verify the loader was called to get the entrypoint
-    mock_loader.get_action_entrypoint.assert_called_once_with(action_name)
+    # 1. Verify that the spec was created from the correct file path
+    expected_path = (
+        Path("/fake/primitives/actions/test_action/1.0.0") / "test_action.py"
+    )
+    mock_spec_from_file_location.assert_called_once_with(action_name, expected_path)
 
-    # 2. Verify that the correct module was dynamically imported
-    expected_import_path = "prp_compiler.primitives.actions.test_action.v1_0_0.test_action"
-    mock_import_module.assert_called_once_with(expected_import_path)
-
-    # 3. Verify the action function was called with the correct arguments
+    # 2. Verify the action function was called with the correct arguments
     mock_action_function.assert_called_once_with(path="/tmp")
 
-    # 4. Verify the result is the string representation of the function's return value
-    assert result == str({"status": "success", "files": ["a.txt"]})
-
+    # 3. Verify the result is the string representation of the function's return value
+    assert result == str({"status": "success"})
 
 
 @patch("src.prp_compiler.orchestrator.PlannerAgent")
@@ -66,24 +74,27 @@ def test_run_captures_finish_args_and_assembles_context(
     MockPlannerAgent, mock_knowledge_store
 ):
     """
-    Tests that the main run loop correctly captures the 'finish' action's arguments
-    and uses them to assemble and return the final context and schema choice.
+    Tests that the main run loop correctly captures the 'finish' action's
+    arguments and uses them to assemble and return the final context and schema
+    choice.
     """
     # Arrange
     mock_planner_instance = MockPlannerAgent.return_value
 
-    # This generator yields one action step, then the final 'finish' step
-    def mock_planning_loop(*args, **kwargs):
+    # Define the sequence of steps the mock planner will return
+    steps = [
         # First step: a simple action
-        yield ReActStep(
+        ReActStep(
             thought=Thought(
                 reasoning="I need to see what files are in the directory.",
                 criticism="This is a good first step.",
-                next_action=Action(tool_name="list_directory", arguments={"directory_path": "."})
+                next_action=Action(
+                    tool_name="list_directory", arguments={"directory_path": "."}
+                )
             )
-        )
+        ),
         # Final step: the finish action with the plan details
-        yield ReActStep(
+        ReActStep(
             thought=Thought(
                 reasoning="I have enough information to finish.",
                 criticism="The plan is complete.",
@@ -96,8 +107,8 @@ def test_run_captures_finish_args_and_assembles_context(
                 )
             )
         )
-
-    mock_planner_instance.run_planning_loop.side_effect = mock_planning_loop
+    ]
+    mock_planner_instance.plan_step.side_effect = steps
 
     # The loader is still needed for schemas and patterns
     mock_loader = MagicMock()
@@ -107,7 +118,7 @@ def test_run_captures_finish_args_and_assembles_context(
     ]
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
-    orchestrator.execute_action = MagicMock(return_value="Observation: file1.txt")
+    orchestrator.execute_action = MagicMock(return_value="file1.txt")
 
     # Act
     schema_choice, final_context = orchestrator.run("test goal", "test constitution")
@@ -120,7 +131,7 @@ def test_run_captures_finish_args_and_assembles_context(
     assert "Thought: I need to see what files are in the directory." in final_context
     assert "Action: list_directory({'directory_path': '.'})" in final_context
     assert "Observation: file1.txt" in final_context
-    assert "Action: finish({" in final_context # Check that finish was called
+    assert "Action: finish({" in final_context  # Check that finish was called
 
     # 3. Check that the schema and pattern content were appended correctly
     assert "Schema: test_schema\n{\"title\": \"Test Schema\"}" in final_context

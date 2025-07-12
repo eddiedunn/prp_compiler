@@ -1,9 +1,10 @@
-import pytest
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from src.prp_compiler.main import app, compile
-from typer.testing import CliRunner
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.prp_compiler.main import compile
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
@@ -41,7 +42,9 @@ def mock_primitive_loader():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("name, goal_md, expected_json_path", find_golden_cases())
+@pytest.mark.parametrize(
+    "name, goal_md, expected_json_path", find_golden_cases()
+)
 @patch("src.prp_compiler.main.configure_gemini")
 @patch("src.prp_compiler.main.KnowledgeStore")
 @patch("src.prp_compiler.main.PrimitiveLoader")
@@ -59,14 +62,18 @@ def test_golden_prp(
 ):
     """
     Tests the full PRP compilation process by directly calling the 'compile' function.
+
     This avoids issues with CliRunner and ensures mocks are applied correctly.
     """
     # Arrange
     # 1. Mock loaders and configurations
     mock_loader_instance = mock_loader_class.return_value
-    # Mock the schema loader to return a valid, simple schema
-    mock_loader_instance.get_schema.return_value = json.dumps({"type": "object"})
-    mock_knowledge_store_instance = mock_knowledge_store_class.return_value
+    # Mock the loader to return a valid schema when get_primitive_content is called.
+    # This is what the compile() function actually calls.
+    mock_loader_instance.get_primitive_content.return_value = json.dumps(
+        {"type": "object"}
+    )
+    mock_knowledge_store_class.return_value
 
     # 2. Set up paths and read test case data
     output_file = tmp_path / "output.json"
@@ -107,7 +114,9 @@ def test_golden_prp(
         exit_code = e.code
 
     # Assert
-    assert exit_code == 0, f"CLI function failed for case '{name}' with exit code {exit_code}"
+    assert exit_code == 0, (
+        f"CLI function failed for case '{name}' with exit code {exit_code}"
+    )
     assert output_file.exists()
 
     with open(output_file, "r") as f:
