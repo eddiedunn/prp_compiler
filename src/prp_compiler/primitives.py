@@ -54,3 +54,13 @@ class PrimitiveLoader:
     def get_all(self, primitive_type: str) -> List[Dict[str, Any]]:
         """Returns a list of all primitives of a given type."""
         return list(self.primitives.get(primitive_type, {}).values())
+
+    def get_primitive_content(self, primitive_type: str, name: str) -> str:
+        """Gets the content of a primitive's entrypoint file."""
+        primitive = self.primitives.get(primitive_type, {}).get(name)
+        if not primitive:
+            raise ValueError(f"Primitive '{name}' of type '{primitive_type}' not found.")
+        entrypoint_path = Path(primitive['base_path']) / primitive['entrypoint']
+        if not entrypoint_path.is_file():
+            raise FileNotFoundError(f"Entrypoint file not found for primitive '{name}': {entrypoint_path}")
+        return entrypoint_path.read_text()

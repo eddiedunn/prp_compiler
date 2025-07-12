@@ -30,7 +30,7 @@ def mock_synthesizer(monkeypatch):
     class DummySynthesizer:
         def __init__(self):
             pass
-        def synthesize(self, schema, context, max_retries=2):
+        def synthesize(self, schema, context, constitution, max_retries=2):
             return {
                 "goal": "Test goal",
                 "why": "Test why",
@@ -41,13 +41,27 @@ def mock_synthesizer(monkeypatch):
             }
     monkeypatch.setattr("src.prp_compiler.main.SynthesizerAgent", DummySynthesizer)
 
-def test_cli_compile_command(mock_orchestrator, mock_synthesizer):
+@pytest.fixture
+def mock_knowledge_store(monkeypatch):
+    class DummyKnowledgeStore:
+        def __init__(self, persist_directory):
+            pass
+        def build(self, knowledge_primitives):
+            pass
+        def load(self):
+            pass
+    monkeypatch.setattr("src.prp_compiler.main.KnowledgeStore", DummyKnowledgeStore)
+
+def test_cli_compile_command(mock_orchestrator, mock_synthesizer, mock_configure_gemini, mock_knowledge_store):
     runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = Path(tmpdir) / "test.json"
-        result = runner.invoke(app, ["compile", "test-goal", "--out", str(output_file)])
+        # Create a dummy primitives directory so the loader doesn't fail
+        primitives_dir = Path(tmpdir) / "agent_primitives"
+        primitives_dir.mkdir()
+        result = runner.invoke(app, ["compile", "test-goal", "--out", str(output_file), "--primitives-path", str(primitives_dir)])
         
-        assert result.exit_code == 0, f"CLI command failed with output: {result.stdout}"
+        assert result.exit_code == 0, f"CLI command failed.\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         assert output_file.exists()
         with open(output_file) as f:
             data = json.load(f)

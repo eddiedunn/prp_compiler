@@ -6,6 +6,8 @@ from typing import Tuple
 from .config import ALLOWED_SHELL_COMMANDS
 
 from .agents.planner import PlannerAgent, Action
+from .primitives import PrimitiveLoader
+from .knowledge import KnowledgeStore
 
 def load_constitution(root_path: Path) -> str:
     """Loads the constitution from CLAUDE.md at the project root."""
@@ -18,64 +20,71 @@ def load_constitution(root_path: Path) -> str:
 
 class Orchestrator:
     """
-    Orchestrates the execution of tasks, including resolving dynamic content and driving the ReAct loop.
-    Supports both legacy (manifest-based) and new (primitive_loader/knowledge_store) initialization for backward compatibility.
+    Drives the agentic workflow, from planning to context assembly.
     """
+    def __init__(self, primitive_loader: PrimitiveLoader, knowledge_store: KnowledgeStore):
+        self.primitive_loader = primitive_loader
+        self.knowledge_store = knowledge_store
+        self.planner = PlannerAgent(self.primitive_loader)
 
-    def __init__(self, *args, **kwargs):
-        # Legacy: (tools_manifest, knowledge_manifest, schemas_manifest)
-        # New: (primitive_loader, knowledge_store)
-        if len(args) == 3 and all(isinstance(arg, list) for arg in args):
-            # Legacy manifest-based init
-            tools_manifest, knowledge_manifest, schemas_manifest = args
-            self.tools_manifest = {item.name: item for item in tools_manifest}
-            self.knowledge_manifest = {item.name: item for item in knowledge_manifest}
-            self.schemas_manifest = {item.name: item for item in schemas_manifest}
-            self.legacy_mode = True
-        elif len(args) == 2:
-            # New ReAct init
-            self.primitive_loader = args[0]
-            self.knowledge_store = args[1]
-            self.planner = PlannerAgent(self.primitive_loader)
-            self.legacy_mode = False
-        else:
-            raise TypeError("Orchestrator must be initialized with either (tools_manifest, knowledge_manifest, schemas_manifest) or (primitive_loader, knowledge_store)")
+        # The new dynamic dispatch map for actions.
+        self.action_handlers: Dict[str, Callable[..., str]] = {
+            "retrieve_knowledge": self.knowledge_store.retrieve,
+            # In the future, other actions like 'web_search' would be registered here.
+        }
 
     def execute_action(self, action: Action) -> str:
-        """Executes a single action from the planner and returns the observation."""
-        if action.tool_name == "retrieve_knowledge":
-            query = action.arguments.get("query", "")
-            results = self.knowledge_store.retrieve(query)
-            return f"Retrieved {len(results)} knowledge chunks for query: '{query}'\nContent:\n" + "\n".join(results)
-        # Here you would add logic for other tools like web_search
-        # For now, we return a placeholder for any other tool
-        else:
-            return f"Observation: Executed tool '{action.tool_name}' with args {action.arguments}. [Mocked Result]"
+        """Executes a single action using the handler map."""
+        handler = self.action_handlers.get(action.tool_name)
+        if not handler:
+            return f"[ERROR] Action '{action.tool_name}' not found in handler map."
+        
+        # The 'query' key is a simplification for now. A more robust solution
+        # would inspect the handler's signature, but this is sufficient.
+        query = action.arguments.get("query", "")
+        if not query:
+             return f"[ERROR] Missing 'query' argument for action '{action.tool_name}'."
+        
+        # Assuming all current handlers take a single 'query' argument.
+        results = handler(query)
+        return f"Retrieved {len(results)} chunks for query: '{query}'\nContent:\n" + "\n".join(results)
 
-    def run(self, user_goal: str) -> Tuple[str, str]:
-        """Drives the main ReAct loop and assembles the final context using the new Planner generator interface."""
-        max_steps = 10
+    def run(self, user_goal: str, max_steps: int = 10) -> Tuple[str, str]:
+        """Drives the main ReAct loop and assembles the final context."""
         planner_gen = self.planner.run_planning_loop(user_goal, max_steps=max_steps)
         final_context_parts = []
-        final_plan = None
-        try:
-            step = next(planner_gen)
-            while True:
-                action = step.thought.next_action
-                if action.tool_name == "finish":
-                    final_plan = action.arguments
-                    break
-                observation = self.execute_action(action)
-                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {action.tool_name}\nObservation: {observation}")
+        final_plan_args = None
+        
+        observation = "No observation yet. Start by thinking about the user's goal."
+        
+        for _ in range(max_steps):
+            try:
                 step = planner_gen.send(observation)
-        except StopIteration:
-            pass
-        if final_plan:
-            schema_template = self.primitive_loader.primitives['schemas'][final_plan['schema_choice']]['content']
-            for pattern_name in final_plan.get('pattern_references', []):
-                final_context_parts.append(self.primitive_loader.primitives['patterns'][pattern_name]['content'])
-            return schema_template, "\n---\n".join(final_context_parts)
-        raise RuntimeError("Planner failed to finish within max steps.")
+                action = step.thought.next_action
+                
+                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {action.tool_name}({action.arguments})")
+
+                if action.tool_name == "finish":
+                    final_plan_args = action.arguments
+                    break
+
+                observation = self.execute_action(action)
+                final_context_parts.append(f"Observation: {observation}")
+
+            except StopIteration:
+                break
+        
+        if not final_plan_args:
+            raise RuntimeError("Planner failed to call 'finish' within max steps.")
+
+        # Assemble final context from patterns and the loop history
+        schema_content = self.primitive_loader.get_primitive_content('schemas', final_plan_args['schema_choice'])
+        
+        for pattern_name in final_plan_args.get('pattern_references', []):
+            pattern_content = self.primitive_loader.get_primitive_content('patterns', pattern_name)
+            final_context_parts.append(f"\n--- Relevant Pattern: {pattern_name} ---\n{pattern_content}")
+
+        return schema_content, "\n\n".join(final_context_parts)
 
 
 
@@ -105,6 +114,14 @@ class Orchestrator:
                 return result.stdout.strip()
             except Exception as e:
                 return f"[ERROR: Command '{command_or_path}' failed: {e}]"
+        elif prefix == "@":
+            file_path = Path(command_or_path)
+            try:
+                if not file_path.is_file():
+                    return f"[ERROR: File not found at '{command_or_path}']"
+                return file_path.read_text()
+            except Exception as e:
+                return f"[ERROR: Could not read file at '{command_or_path}': {e}]"
 
     def _resolve_dynamic_content(self, raw_context: str) -> str:
         """

@@ -2,6 +2,7 @@ import os
 import json
 import subprocess
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -16,30 +17,29 @@ def find_golden_cases(golden_dir):
     return cases
 
 def run_prp_compiler(goal_md_path):
+    goal_text = goal_md_path.read_text().strip().replace('\n', ' ')
     # Run the CLI, capturing output to a temp file
     import tempfile
-    cli_commands = [
-        ["prp-compiler", str(goal_md_path), "--output"],
-        ["prp_compiler", str(goal_md_path), "--output"]
-    ]
-    last_error = None
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        output_path = tmp.name
-    for cmd_base in cli_commands:
-        cmd = cmd_base + [output_path]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode == 0:
-                with open(output_path, "r") as f:
-                    generated = json.load(f)
-                os.remove(output_path)
-                return generated
-            else:
-                last_error = f"Command: {' '.join(cmd)}\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
-        except FileNotFoundError as e:
-            last_error = f"Command not found: {' '.join(cmd)}\nError: {e}"
-            continue
-    os.remove(output_path)
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode='w') as tmp:
+        output_path_str = tmp.name
+
+    cmd = [sys.executable, "-m", "prp_compiler.main", "compile", goal_text, "--out", output_path_str]
+
+    try:
+        # Using check=False to capture output even on failure
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+        if result.returncode == 0:
+            with open(output_path_str, "r") as f:
+                generated = json.load(f)
+            os.remove(output_path_str)
+            return generated
+        else:
+            last_error = f"Command: {' '.join(cmd)}\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    finally:
+        if os.path.exists(output_path_str):
+            os.remove(output_path_str)
+
     raise RuntimeError(f"All CLI invocations failed. Last error:\n{last_error}")
 
 def compare_prp_json(generated, expected):

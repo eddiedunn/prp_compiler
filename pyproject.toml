@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-prp-compiler = "prp_compiler.main:run"
+prp-compiler = "prp_compiler.main:app"
 
 [project.optional-dependencies]
 dev = [

@@ -13,6 +13,14 @@ def mock_gemini_model():
         # For example, setting a default return value for a method.
         yield mock_agent_model
 
+@pytest.fixture
+def mock_configure_gemini(monkeypatch):
+    """Fixture to mock configure_gemini to prevent real API calls in CLI tests."""
+    from unittest.mock import MagicMock
+    mock = MagicMock()
+    monkeypatch.setattr("src.prp_compiler.config.configure_gemini", mock)
+    yield mock
+
 @pytest.fixture(scope="session")
 def temp_agent_dir(tmp_path_factory):
     """Creates a temporary agent_capabilities directory with dummy files for session-wide use."""
