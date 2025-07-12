@@ -1,5 +1,6 @@
 import tiktoken
 
+
 def count_tokens(text: str) -> int:
     """Counts tokens using the cl100k_base encoding used by modern models."""
     try:

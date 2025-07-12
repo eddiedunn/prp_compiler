@@ -1,7 +1,10 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from src.prp_compiler.agents.synthesizer import SynthesizerAgent
 import json
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.prp_compiler.agents.synthesizer import SynthesizerAgent
+
 
 @pytest.fixture
 def synthesizer_agent():
@@ -12,6 +15,7 @@ def synthesizer_agent():
         agent.model = mock_model_instance
         return agent
 
+
 def test_synthesizer_valid_json_first_try(synthesizer_agent):
     schema = {
         "type": "object",
@@ -21,9 +25,16 @@ def test_synthesizer_valid_json_first_try(synthesizer_agent):
             "what": {"type": "object"},
             "context": {"type": "object"},
             "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"}
+            "validation_loop": {"type": "object"},
         },
-        "required": ["goal", "why", "what", "context", "implementation_blueprint", "validation_loop"]
+        "required": [
+            "goal",
+            "why",
+            "what",
+            "context",
+            "implementation_blueprint",
+            "validation_loop",
+        ],
     }
     context = "irrelevant for test"
     valid_json = {
@@ -32,7 +43,7 @@ def test_synthesizer_valid_json_first_try(synthesizer_agent):
         "what": {},
         "context": {},
         "implementation_blueprint": {},
-        "validation_loop": {}
+        "validation_loop": {},
     }
     mock_response = MagicMock()
     mock_response.text = json.dumps(valid_json)
@@ -41,6 +52,7 @@ def test_synthesizer_valid_json_first_try(synthesizer_agent):
     result = synthesizer_agent.synthesize(schema, context, constitution)
     assert result == valid_json
     synthesizer_agent.model.generate_content.assert_called_once()
+
 
 def test_synthesizer_invalid_then_valid_json(synthesizer_agent):
     schema = {
@@ -51,9 +63,16 @@ def test_synthesizer_invalid_then_valid_json(synthesizer_agent):
             "what": {"type": "object"},
             "context": {"type": "object"},
             "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"}
+            "validation_loop": {"type": "object"},
         },
-        "required": ["goal", "why", "what", "context", "implementation_blueprint", "validation_loop"]
+        "required": [
+            "goal",
+            "why",
+            "what",
+            "context",
+            "implementation_blueprint",
+            "validation_loop",
+        ],
     }
     context = "irrelevant for test"
     invalid_json_str = "not a json"
@@ -63,18 +82,22 @@ def test_synthesizer_invalid_then_valid_json(synthesizer_agent):
         "what": {},
         "context": {},
         "implementation_blueprint": {},
-        "validation_loop": {}
+        "validation_loop": {},
     }
     valid_json_str = json.dumps(valid_json)
     mock_response1 = MagicMock()
     mock_response1.text = invalid_json_str
     mock_response2 = MagicMock()
     mock_response2.text = valid_json_str
-    synthesizer_agent.model.generate_content.side_effect = [mock_response1, mock_response2]
+    synthesizer_agent.model.generate_content.side_effect = [
+        mock_response1,
+        mock_response2,
+    ]
     constitution = "CONSTITUTION"
     result = synthesizer_agent.synthesize(schema, context, constitution)
     assert result == valid_json
     assert synthesizer_agent.model.generate_content.call_count == 2
+
 
 def test_synthesizer_schema_validation_failure(synthesizer_agent):
     schema = {
@@ -85,9 +108,16 @@ def test_synthesizer_schema_validation_failure(synthesizer_agent):
             "what": {"type": "object"},
             "context": {"type": "object"},
             "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"}
+            "validation_loop": {"type": "object"},
         },
-        "required": ["goal", "why", "what", "context", "implementation_blueprint", "validation_loop"]
+        "required": [
+            "goal",
+            "why",
+            "what",
+            "context",
+            "implementation_blueprint",
+            "validation_loop",
+        ],
     }
     context = "irrelevant for test"
     invalid_json_str = "not a json"
@@ -97,14 +127,17 @@ def test_synthesizer_schema_validation_failure(synthesizer_agent):
         "what": {},
         "context": {},
         "implementation_blueprint": {},
-        "validation_loop": {}
+        "validation_loop": {},
     }
     valid_json_str = json.dumps(valid_json)
     mock_response1 = MagicMock()
     mock_response1.text = invalid_json_str
     mock_response2 = MagicMock()
     mock_response2.text = valid_json_str
-    synthesizer_agent.model.generate_content.side_effect = [mock_response1, mock_response2]
+    synthesizer_agent.model.generate_content.side_effect = [
+        mock_response1,
+        mock_response2,
+    ]
     constitution = "CONSTITUTION"
     result = synthesizer_agent.synthesize(schema, context, constitution, max_retries=2)
     assert result == valid_json

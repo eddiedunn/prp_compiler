@@ -1,5 +1,6 @@
-import google.generativeai as genai
 import re
+
+import google.generativeai as genai
 
 
 class BaseAgent:
@@ -15,15 +16,17 @@ class BaseAgent:
         It handles markdown fences, optional 'json' specifiers, and surrounding text.
         """
         # Match ```json, ```, or just the JSON object itself
-        match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})", text, re.DOTALL)
+        match = re.search(
+            r"```(?:json)?\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})", text, re.DOTALL
+        )
         if match:
             # Prioritize the content within fences if both groups are found
             return match.group(1) or match.group(2)
 
         # As a fallback, try to find the first and last curly braces
         try:
-            start = text.index('{')
-            end = text.rindex('}') + 1
+            start = text.index("{")
+            end = text.rindex("}") + 1
             return text[start:end]
         except ValueError:
             return text  # Return original text if no JSON object is found

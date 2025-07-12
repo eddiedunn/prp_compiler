@@ -1,5 +1,7 @@
 import pytest
+
 from src.prp_compiler.primitives import PrimitiveLoader
+
 
 @pytest.fixture
 def temp_primitives_dir(tmp_path):
@@ -23,6 +25,7 @@ description: Search the web for a query (improved).
     (v1_0_0 / "prompt.md").write_text("Prompt v1.0.0")
     (v1_1_0 / "prompt.md").write_text("Prompt v1.1.0")
     return base
+
 
 def test_primitive_loader_latest_version(temp_primitives_dir):
     loader = PrimitiveLoader(temp_primitives_dir)

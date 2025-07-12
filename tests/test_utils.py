@@ -1,5 +1,6 @@
 from src.prp_compiler.utils import count_tokens
 
+
 def test_count_tokens_local():
     """Test that the local token count is accurate using tiktoken."""
     # Arrange

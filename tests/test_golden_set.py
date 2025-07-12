@@ -1,10 +1,11 @@
-import os
 import json
+import os
 import subprocess
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
+
 
 def find_golden_cases(golden_dir):
     cases = []
@@ -16,14 +17,24 @@ def find_golden_cases(golden_dir):
                 cases.append((goal_md, expected_json))
     return cases
 
+
 def run_prp_compiler(goal_md_path):
-    goal_text = goal_md_path.read_text().strip().replace('\n', ' ')
+    goal_text = goal_md_path.read_text().strip().replace("\n", " ")
     # Run the CLI, capturing output to a temp file
     import tempfile
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode='w') as tmp:
+
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp:
         output_path_str = tmp.name
 
-    cmd = [sys.executable, "-m", "prp_compiler.main", "compile", goal_text, "--out", output_path_str]
+    cmd = [
+        sys.executable,
+        "-m",
+        "prp_compiler.main",
+        "compile",
+        goal_text,
+        "--out",
+        output_path_str,
+    ]
 
     try:
         # Using check=False to capture output even on failure
@@ -42,23 +53,43 @@ def run_prp_compiler(goal_md_path):
 
     raise RuntimeError(f"All CLI invocations failed. Last error:\n{last_error}")
 
+
 def compare_prp_json(generated, expected):
     # Compare structure, allow some flexibility in text fields
     import difflib
-    assert isinstance(generated, dict) and isinstance(expected, dict), f"Generated and expected must be dicts. Got: {type(generated)} and {type(expected)}"
+
+    assert isinstance(generated, dict) and isinstance(expected, dict), (
+        f"Generated and expected must be dicts. Got: {type(generated)} and {type(expected)}"
+    )
     for key in expected:
-        assert key in generated, f"Missing key: {key}\nExpected keys: {list(expected.keys())}\nGenerated keys: {list(generated.keys())}"
+        assert key in generated, (
+            f"Missing key: {key}\nExpected keys: {list(expected.keys())}\nGenerated keys: {list(generated.keys())}"
+        )
         if isinstance(expected[key], str):
             exp, gen = expected[key].strip(), generated[key].strip()
             if exp != gen:
-                diff = '\n'.join(difflib.unified_diff(exp.splitlines(), gen.splitlines(), fromfile='expected', tofile='generated', lineterm=''))
-                raise AssertionError(f"Mismatch in '{key}':\nDiff:\n{diff}\nExpected:\n{exp}\nGenerated:\n{gen}")
+                diff = "\n".join(
+                    difflib.unified_diff(
+                        exp.splitlines(),
+                        gen.splitlines(),
+                        fromfile="expected",
+                        tofile="generated",
+                        lineterm="",
+                    )
+                )
+                raise AssertionError(
+                    f"Mismatch in '{key}':\nDiff:\n{diff}\nExpected:\n{exp}\nGenerated:\n{gen}"
+                )
         else:
             if expected[key] != generated[key]:
-                raise AssertionError(f"Mismatch in '{key}':\nExpected: {expected[key]}\nGenerated: {generated[key]}")
+                raise AssertionError(
+                    f"Mismatch in '{key}':\nExpected: {expected[key]}\nGenerated: {generated[key]}"
+                )
+
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 golden_cases = find_golden_cases(GOLDEN_DIR)
+
 
 @pytest.mark.slow  # Mark golden tests as slow
 @pytest.mark.skipif(not golden_cases, reason="No golden cases found")

@@ -1,26 +1,33 @@
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from src.prp_compiler.agents.planner import PlannerAgent
-from src.prp_compiler.models import ManifestItem, ReActStep, Thought, Action
+from src.prp_compiler.models import ManifestItem
+
 
 class DummyPrimitiveLoader:
     def get_all(self, kind):
-        if kind == 'actions':
+        if kind == "actions":
             return [
                 {
                     "name": "retrieve_knowledge",
                     "description": "Retrieve knowledge",
-                    "arguments": "A query string"
+                    "arguments": "A query string",
                 }
             ]
         return []
+
 
 @pytest.fixture
 def planner_agent(monkeypatch):
     """Provides a PlannerAgent instance for testing."""
     mock_model_instance = MagicMock()
-    monkeypatch.setattr("google.generativeai.GenerativeModel", MagicMock(return_value=mock_model_instance))
-    
+    monkeypatch.setattr(
+        "google.generativeai.GenerativeModel",
+        MagicMock(return_value=mock_model_instance),
+    )
+
     loader = DummyPrimitiveLoader()
     agent = PlannerAgent(loader)
     agent.model = mock_model_instance
@@ -53,13 +60,22 @@ def test_run_planning_loop(planner_agent):
 
     finish_fc = MagicMock()
     finish_fc.name = "finish"
-    finish_fc.args = {"schema_choice": "standard_prp", "pattern_references": ["pattern1"], "reasoning": "r2", "criticism": "c2"}
+    finish_fc.args = {
+        "schema_choice": "standard_prp",
+        "pattern_references": ["pattern1"],
+        "reasoning": "r2",
+        "criticism": "c2",
+    }
 
     # Mock response objects
     retrieve_response = MagicMock()
-    retrieve_response.candidates = [MagicMock(content=MagicMock(parts=[MagicMock(function_call=retrieve_fc)]))]
+    retrieve_response.candidates = [
+        MagicMock(content=MagicMock(parts=[MagicMock(function_call=retrieve_fc)]))
+    ]
     finish_response = MagicMock()
-    finish_response.candidates = [MagicMock(content=MagicMock(parts=[MagicMock(function_call=finish_fc)]))]
+    finish_response.candidates = [
+        MagicMock(content=MagicMock(parts=[MagicMock(function_call=finish_fc)]))
+    ]
 
     # Side effect for generate_content: first call returns retrieve, second returns finish
     mock_model.generate_content.side_effect = [retrieve_response, finish_response]
@@ -78,7 +94,7 @@ def test_run_planning_loop(planner_agent):
         assert step2.thought.next_action.tool_name == "finish"
     except StopIteration:
         pytest.fail("Generator stopped prematurely. It should yield the 'finish' step.")
-    
+
     # Assert generator is exhausted after 'finish'
     with pytest.raises(StopIteration):
         planner_gen.send("Another observation.")
