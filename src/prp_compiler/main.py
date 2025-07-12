@@ -36,11 +36,15 @@ def compile(
 
         typer.echo("2. Running Planner Agent to gather context...")
         orchestrator = Orchestrator(loader, knowledge_store)
-        schema_json, final_context = orchestrator.run(goal, constitution)
-        
+        schema_choice, final_context = orchestrator.run(goal, constitution)
+
+        # Load the actual schema content based on the choice from the planner
+        schema_content_str = loader.get_primitive_content("schemas", schema_choice)
+        schema_json = json.loads(schema_content_str)
+
         typer.echo("3. Running Synthesizer Agent to generate final PRP...")
         synthesizer = SynthesizerAgent()
-        final_prp_json = synthesizer.synthesize(json.loads(schema_json), final_context, constitution)
+        final_prp_json = synthesizer.synthesize(schema_json, final_context, constitution)
         
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, 'w') as f:

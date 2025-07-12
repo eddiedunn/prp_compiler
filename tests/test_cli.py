@@ -35,11 +35,29 @@ def mock_orchestrator(monkeypatch):
                 ],
             }
             return (
-                json.dumps(schema_dict),
+                "test_schema",
                 "dummy context",
             )
 
     monkeypatch.setattr("src.prp_compiler.main.Orchestrator", DummyOrchestrator)
+
+
+@pytest.fixture
+def mock_primitive_loader(monkeypatch):
+    class DummyLoader:
+        def __init__(self, base_path):
+            pass
+
+        def get_primitive_content(self, p_type, name):
+            if p_type == "schemas" and name == "test_schema":
+                schema_dict = {"type": "object", "properties": {"goal": {"type": "string"}}}
+                return json.dumps(schema_dict)
+            return ""
+
+        def get_all(self, p_type):
+            return []
+
+    monkeypatch.setattr("src.prp_compiler.main.PrimitiveLoader", DummyLoader)
 
 
 @pytest.fixture
@@ -77,7 +95,7 @@ def mock_knowledge_store(monkeypatch):
 
 
 def test_cli_compile_command(
-    mock_orchestrator, mock_synthesizer, mock_configure_gemini, mock_knowledge_store
+    mock_orchestrator, mock_synthesizer, mock_configure_gemini, mock_knowledge_store, mock_primitive_loader
 ):
     runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmpdir:

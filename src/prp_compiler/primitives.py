@@ -74,3 +74,10 @@ class PrimitiveLoader:
                 f"Entrypoint file not found for primitive '{name}': {entrypoint_path}"
             )
         return entrypoint_path.read_text()
+
+    def get_action_entrypoint(self, name: str) -> Tuple[str, str]:
+        action_manifest = self.primitives.get("actions", {}).get(name)
+        if not action_manifest or "entrypoint" not in action_manifest:
+            raise ValueError(f"Action '{name}' or its entrypoint not found.")
+        module_str, function_str = action_manifest["entrypoint"].split(":")
+        return module_str, function_str

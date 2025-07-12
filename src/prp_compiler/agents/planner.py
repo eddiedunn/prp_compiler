@@ -6,21 +6,24 @@ from ..models import ReActStep, Thought, Action
 from ..primitives import PrimitiveLoader
 
 REACT_PROMPT_TEMPLATE = """
-You are an expert AI engineering architect. Your goal is to gather all necessary information to create a comprehensive PRP for the user's goal.
-You operate in a loop of Thought -> Action -> Observation.
+You are an expert AI engineering architect. Your task is to build a context buffer by reasoning and acting in a loop to gather all necessary information to create a comprehensive PRP for the user's goal.
 
-1.  **Thought:** In your 'reasoning', analyze the user's goal and the history of your previous steps. In your 'criticism', critique your own reasoning to find flaws.
-2.  **Action:** Based on your thought, choose one of the available tools to execute. When you have gathered enough context to build a complete PRP, you MUST call the "finish" tool.
+Your process is as follows:
+1.  **Examine History:** Review the history of your previous thoughts, actions, and their resulting observations.
+2.  **Think:** Based on the history and the user's goal, formulate a thought. Your thought must include `reasoning` (why this is the next logical step) and `criticism` (what are the flaws or risks of this step).
+3.  **Act:** Choose one of the available tools to execute.
+
+If you have gathered enough information to build a complete PRP, you MUST call the "finish" tool. Otherwise, continue choosing tools to build the context.
 
 You have access to the following tools:
 {tools_json_schema}
 
-Your history of thoughts, actions, and observations so far (the last entry is the most recent):
+History (last entry is the most recent observation):
 {history}
 
 User's Goal: "{user_goal}"
 
-Based on your history and the user's goal, what is your next thought and action? You must respond by calling one of the available tool functions.
+Based on the full history above and the user's goal, what is your next thought and action? You must respond by calling one of the available tool functions.
 """
 
 class PlannerAgent(BaseAgent):

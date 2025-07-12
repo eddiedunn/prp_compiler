@@ -1,7 +1,5 @@
 import importlib
-import re
-import shlex
-import subprocess
+
 from pathlib import Path
 from typing import Tuple
 
@@ -32,27 +30,40 @@ class Orchestrator:
         self.planner = PlannerAgent(self.primitive_loader)
 
     def execute_action(self, action: Action) -> str:
-        """
-        Loads an action's template, fills its arguments, and resolves dynamic content.
-        """
+        """Dynamically loads and executes an action primitive."""
         try:
-            # 1. Get the raw template content from the loader
-            raw_template = self.primitive_loader.get_primitive_content(
-                "actions", action.tool_name
+            # Get the entrypoint module and function from the primitive's manifest
+            module_str, function_str = self.primitive_loader.get_action_entrypoint(
+                action.tool_name
             )
 
-            # 2. Substitute arguments using a regex to handle complex templates.
-            def replacer(match):
-                key = match.group(1)
-                return str(action.arguments.get(key, f"[ERROR: Missing argument '{key}']"))
+            # Get the manifest to construct the full import path
+            action_manifest = self.primitive_loader.primitives.get("actions", {}).get(
+                action.tool_name
+            )
+            if not action_manifest:
+                raise ValueError(f"Manifest for action '{action.tool_name}' not found.")
 
-            # This pattern finds all instances of $ARGUMENTS(key)
-            context_with_args = re.sub(r"\$ARGUMENTS\((.*?)\)", replacer, raw_template)
+            version = action_manifest["version"]
+            module_name = module_str.replace(".py", "")
 
-            # 3. Resolve dynamic content like ! and @
-            resolved_content = self._resolve_dynamic_content(context_with_args)
-            return resolved_content
-        except (ImportError, AttributeError, TypeError, Exception) as e:
+            # Construct the full, correct import path for the action module
+            # e.g., prp_compiler.primitives.actions.web_search.1_0_0.web_search
+            import_path = (
+                f"prp_compiler.primitives.actions.{action.tool_name}.v{version.replace('.', '_')}.{module_name}"
+            )
+
+            # Dynamically import the module
+            action_module = importlib.import_module(import_path)
+
+            # Get the function from the module
+            action_function = getattr(action_module, function_str)
+
+            # Execute the function with its arguments and return the result as a string
+            result = action_function(**action.arguments)
+
+            return str(result)
+        except Exception as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
     def run(self, user_goal: str, constitution: str, max_steps: int = 10) -> Tuple[str, str]:
@@ -130,57 +141,3 @@ class Orchestrator:
             + "\n\n".join(final_context_parts),
         )
 
-    def _resolve_callback(self, match: re.Match) -> str:
-        """
-        Callback function for re.sub to handle dynamic content resolution.
-        """
-        prefix = match.group(1)
-        command_or_path = match.group(2).strip()
-
-        if prefix == "!":
-            try:
-                # Split command to avoid shell=True
-                command_parts = shlex.split(command_or_path)
-
-                # SECURITY: Check if the command is in the allowlist
-                if (
-                    not command_parts
-                    or command_parts[0] not in ALLOWED_SHELL_COMMANDS
-                ):
-                    return (
-                        f"[ERROR: Command '{command_parts[0] if command_parts else ''}' "
-                        "is not in the allowlist.\n"
-                        "This error indicates that the command is not properly "
-                        f"configured for '{command_parts[0] if command_parts else ''}'.\n"
-                        "Please add the command to the allowlist.\n"
-                        f"The command was: {command_or_path}"
-                    )
-                print(f"Executing command: {command_parts}")
-                result = subprocess.run(
-                    command_parts,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=30,
-                )
-                return result.stdout.strip()
-            except Exception as e:
-                return f"[ERROR: Command '{command_or_path}' failed: {e}]"
-        elif prefix == "@":
-            file_path = Path(command_or_path)
-            try:
-                if not file_path.is_file():
-                    return f"[ERROR: File not found at '{command_or_path}']"
-                return file_path.read_text()
-            except Exception as e:
-                return f"[ERROR: Could not read file at '{command_or_path}': {e}]"
-
-    def _resolve_dynamic_content(self, raw_context: str) -> str:
-        """
-        Resolves dynamic content placeholders in a string.
-        - `!command` is replaced by the stdout of the executed shell command.
-        - `@path/to/file` is replaced by the content of the file.
-        """
-        # It captures the prefix (! or @) and the command/path.
-        pattern = re.compile(r"([!@])\s*([^\n]+)")
-        return pattern.sub(self._resolve_callback, raw_context)
