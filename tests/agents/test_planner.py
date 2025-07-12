@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from src.prp_compiler.agents.planner import PlannerAgent
-from src.prp_compiler.models import Action
+from src.prp_compiler.models import ReActStep
 
 @pytest.fixture
 def mock_primitive_loader():
@@ -32,18 +32,26 @@ def test_run_planning_loop(mock_primitive_loader):
     # Act
     planner_gen = planner.run_planning_loop("test goal", constitution="")
     
-    # Step 1: Yield first action
-    first_action = next(planner_gen)
-    assert isinstance(first_action, Action)
-    assert first_action.tool_name == "retrieve_knowledge"
+    # Step 1: Prime the generator and send the first observation to get the first action
+    next(planner_gen)  # Prime the generator
+    first_step = planner_gen.send("No observation yet. Start by thinking about the user's goal.")
+    assert isinstance(first_step, ReActStep)
+    assert first_step.thought.next_action.tool_name == "retrieve_knowledge"
     
-    # Step 2: Send observation and yield second action
+    # Step 2: Send observation and catch the end of the loop
+    # This should yield the finish step
     try:
-        final_args = planner_gen.send("Observation from retrieve")
-        # This should not be reached, the generator should raise StopIteration with a return value
-        pytest.fail("Generator should have stopped.")
+        finish_step = planner_gen.send("Observation from retrieve")
+        assert finish_step.thought.next_action.tool_name == "finish"
+    except StopIteration:
+        pytest.fail("Generator stopped prematurely. It should yield the 'finish' step.")
+
+    # Step 3: Sending again should raise StopIteration with the final arguments
+    try:
+        planner_gen.send("Another observation.")
+        pytest.fail("Generator did not stop after yielding finish action")
     except StopIteration as e:
-        final_args = e.value # The return value of a generator is in StopIteration exception
+        final_args = e.value
 
     # Assert
     assert final_args == {"schema_choice": "final_schema", "pattern_references": ["p1"]}

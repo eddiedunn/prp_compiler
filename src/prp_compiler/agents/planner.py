@@ -53,9 +53,13 @@ class PlannerAgent(BaseAgent):
         })
         return gemini_tools
 
-    def run_planning_loop(self, user_goal: str, constitution: str, max_steps: int = 10) -> Generator[Action, str, dict]:
+    def run_planning_loop(self, user_goal: str, constitution: str, max_steps: int = 10) -> Generator[ReActStep, str, dict]:
         """Drives the ReAct loop, yielding each action and receiving observations."""
         history = []
+        observation = "No observation yet. Start by thinking about the user's goal."
+
+        yield  # Prime the generator to receive the first observation
+
         for i in range(max_steps):
             prompt = constitution + "\n\n" + REACT_PROMPT_TEMPLATE.format(
                 user_goal=user_goal,
@@ -72,14 +76,21 @@ class PlannerAgent(BaseAgent):
             fc = fc_part.function_call
             action_args = dict(fc.args) if hasattr(fc, 'args') else {}
 
+            reasoning = action_args.pop("reasoning", "")
+            criticism = action_args.pop("criticism", "")
+
             action = Action(tool_name=fc.name, arguments=action_args)
-            
-            # The 'finish' action terminates the loop and returns the final arguments.
+
+            thought = Thought(reasoning=reasoning, criticism=criticism, next_action=action)
+            step = ReActStep(thought=thought)
+
+            # The 'finish' action is yielded, and then the loop terminates.
             if action.tool_name == "finish":
+                yield step
                 return action.arguments
 
-            # Yield the action and wait for the orchestrator to send back the observation.
-            observation = yield action
+            # Yield the step and wait for the orchestrator to send back the observation.
+            observation = yield step
             history.append(f"Action: {action.tool_name}({action.arguments})\nObservation: {observation}")
         
         raise RuntimeError("Planner exceeded max steps without calling 'finish'.")

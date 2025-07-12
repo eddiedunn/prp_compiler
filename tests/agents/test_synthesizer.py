@@ -1,144 +1,61 @@
-import json
-from unittest.mock import MagicMock, patch
-
 import pytest
-
+import json
+from unittest.mock import patch, MagicMock
 from src.prp_compiler.agents.synthesizer import SynthesizerAgent
-
 
 @pytest.fixture
 def synthesizer_agent():
-    with patch("google.generativeai.GenerativeModel") as mock_model_constructor:
-        mock_model_instance = MagicMock()
-        mock_model_constructor.return_value = mock_model_instance
-        agent = SynthesizerAgent()
-        agent.model = mock_model_instance
-        return agent
+    agent = SynthesizerAgent()
+    agent.model = MagicMock() # Mock the model at instance level
+    return agent
 
-
-def test_synthesizer_valid_json_first_try(synthesizer_agent):
-    schema = {
+@pytest.fixture
+def sample_schema():
+    return {
         "type": "object",
-        "properties": {
-            "goal": {"type": "string"},
-            "why": {"type": "string"},
-            "what": {"type": "object"},
-            "context": {"type": "object"},
-            "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"},
-        },
-        "required": [
-            "goal",
-            "why",
-            "what",
-            "context",
-            "implementation_blueprint",
-            "validation_loop",
-        ],
+        "properties": {"goal": {"type": "string"}},
+        "required": ["goal"]
     }
-    context = "irrelevant for test"
-    valid_json = {
-        "goal": "Test goal",
-        "why": "Test why",
-        "what": {},
-        "context": {},
-        "implementation_blueprint": {},
-        "validation_loop": {},
-    }
-    mock_response = MagicMock()
-    mock_response.text = json.dumps(valid_json)
+
+def test_synthesizer_valid_json_first_try(synthesizer_agent, sample_schema):
+    # Arrange
+    valid_json = {"goal": "Test goal"}
+    mock_response = MagicMock(text=json.dumps(valid_json))
     synthesizer_agent.model.generate_content.return_value = mock_response
-    constitution = "CONSTITUTION"
-    result = synthesizer_agent.synthesize(schema, context, constitution)
+    
+    # Act
+    result = synthesizer_agent.synthesize(sample_schema, "context", "constitution")
+    
+    # Assert
     assert result == valid_json
     synthesizer_agent.model.generate_content.assert_called_once()
 
-
-def test_synthesizer_invalid_then_valid_json(synthesizer_agent):
-    schema = {
-        "type": "object",
-        "properties": {
-            "goal": {"type": "string"},
-            "why": {"type": "string"},
-            "what": {"type": "object"},
-            "context": {"type": "object"},
-            "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"},
-        },
-        "required": [
-            "goal",
-            "why",
-            "what",
-            "context",
-            "implementation_blueprint",
-            "validation_loop",
-        ],
-    }
-    context = "irrelevant for test"
-    invalid_json_str = "not a json"
-    valid_json = {
-        "goal": "Test goal",
-        "why": "Test why",
-        "what": {},
-        "context": {},
-        "implementation_blueprint": {},
-        "validation_loop": {},
-    }
-    valid_json_str = json.dumps(valid_json)
-    mock_response1 = MagicMock()
-    mock_response1.text = invalid_json_str
-    mock_response2 = MagicMock()
-    mock_response2.text = valid_json_str
-    synthesizer_agent.model.generate_content.side_effect = [
-        mock_response1,
-        mock_response2,
-    ]
-    constitution = "CONSTITUTION"
-    result = synthesizer_agent.synthesize(schema, context, constitution)
+def test_synthesizer_invalid_then_valid_json(synthesizer_agent, sample_schema):
+    # Arrange
+    invalid_json_str = '{"wrong_key": "Test goal"}' # Fails schema validation
+    valid_json = {"goal": "Test goal"}
+    
+    mock_response1 = MagicMock(text=invalid_json_str)
+    mock_response2 = MagicMock(text=json.dumps(valid_json))
+    synthesizer_agent.model.generate_content.side_effect = [mock_response1, mock_response2]
+    
+    # Act
+    result = synthesizer_agent.synthesize(sample_schema, "context", "constitution", max_retries=2)
+    
+    # Assert
     assert result == valid_json
     assert synthesizer_agent.model.generate_content.call_count == 2
+    # Check that the second prompt contained the error message
+    second_call_prompt = synthesizer_agent.model.generate_content.call_args_list[1][0][0]
+    assert "PREVIOUS ATTEMPT FAILED" in second_call_prompt
+    assert "'goal' is a required property" in second_call_prompt
 
-
-def test_synthesizer_schema_validation_failure(synthesizer_agent):
-    schema = {
-        "type": "object",
-        "properties": {
-            "goal": {"type": "string"},
-            "why": {"type": "string"},
-            "what": {"type": "object"},
-            "context": {"type": "object"},
-            "implementation_blueprint": {"type": "object"},
-            "validation_loop": {"type": "object"},
-        },
-        "required": [
-            "goal",
-            "why",
-            "what",
-            "context",
-            "implementation_blueprint",
-            "validation_loop",
-        ],
-    }
-    context = "irrelevant for test"
-    invalid_json_str = "not a json"
-    valid_json = {
-        "goal": "Test goal",
-        "why": "Test why",
-        "what": {},
-        "context": {},
-        "implementation_blueprint": {},
-        "validation_loop": {},
-    }
-    valid_json_str = json.dumps(valid_json)
-    mock_response1 = MagicMock()
-    mock_response1.text = invalid_json_str
-    mock_response2 = MagicMock()
-    mock_response2.text = valid_json_str
-    synthesizer_agent.model.generate_content.side_effect = [
-        mock_response1,
-        mock_response2,
-    ]
-    constitution = "CONSTITUTION"
-    result = synthesizer_agent.synthesize(schema, context, constitution, max_retries=2)
-    assert result == valid_json
+def test_synthesizer_fails_after_max_retries(synthesizer_agent, sample_schema):
+    # Arrange
+    invalid_response = MagicMock(text='{"wrong_key": "bad"}')
+    synthesizer_agent.model.generate_content.return_value = invalid_response
+    
+    # Act & Assert
+    with pytest.raises(RuntimeError, match="failed to produce a valid PRP JSON after 2 attempts"):
+        synthesizer_agent.synthesize(sample_schema, "context", "constitution", max_retries=2)
     assert synthesizer_agent.model.generate_content.call_count == 2

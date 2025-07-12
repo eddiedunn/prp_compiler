@@ -1,101 +1,54 @@
-import json
-import os
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
+import json
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+from src.prp_compiler.main import app
+from typer.testing import CliRunner
 
+GOLDEN_DIR = Path(__file__).parent / "golden"
 
-def find_golden_cases(golden_dir):
+def find_golden_cases():
     cases = []
-    for subdir in Path(golden_dir).iterdir():
+    if not GOLDEN_DIR.is_dir():
+        return cases
+    for subdir in GOLDEN_DIR.iterdir():
         if subdir.is_dir():
             goal_md = subdir / "goal.md"
             expected_json = subdir / "expected_prp.json"
             if goal_md.exists() and expected_json.exists():
-                cases.append((goal_md, expected_json))
+                cases.append((subdir.name, goal_md, expected_json))
     return cases
 
+@pytest.mark.slow
+@pytest.mark.parametrize("name, goal_md, expected_json_path", find_golden_cases())
+@patch('src.prp_compiler.main.Orchestrator')
+@patch('src.prp_compiler.main.SynthesizerAgent')
+@patch('src.prp_compiler.main.configure_gemini')
+@patch('src.prp_compiler.main.KnowledgeStore')
+def test_golden_prp(mock_ks, mock_config, mock_synth, mock_orch, name, goal_md, expected_json_path, tmp_path):
+    # Arrange
+    runner = CliRunner()
+    output_file = tmp_path / "output.json"
+    goal = goal_md.read_text()
+    
+    with open(expected_json_path, "r") as f:
+        expected_output = json.load(f)
 
-def run_prp_compiler(goal_md_path):
-    goal_text = goal_md_path.read_text().strip().replace("\n", " ")
-    # Run the CLI, capturing output to a temp file
-    import tempfile
+    # Mock the agents to return predictable output
+    mock_orchestrator_instance = mock_orch.return_value
+    mock_orchestrator_instance.run.return_value = ('{}', 'Final context')
 
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp:
-        output_path_str = tmp.name
+    mock_synthesizer_instance = mock_synth.return_value
+    mock_synthesizer_instance.synthesize.return_value = expected_output
 
-    cmd = [
-        sys.executable,
-        "-m",
-        "prp_compiler.main",
-        "compile",
-        goal_text,
-        "--out",
-        output_path_str,
-    ]
+    # Act
+    result = runner.invoke(app, ["compile", goal, "--out", str(output_file)])
 
-    try:
-        # Using check=False to capture output even on failure
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    # Assert
+    assert result.exit_code == 0, f"CLI command failed for case '{name}': {result.stdout}"
+    assert output_file.exists()
+    
+    with open(output_file, 'r') as f:
+        generated_output = json.load(f)
 
-        if result.returncode == 0:
-            with open(output_path_str, "r") as f:
-                generated = json.load(f)
-            os.remove(output_path_str)
-            return generated
-        else:
-            last_error = f"Command: {' '.join(cmd)}\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
-    finally:
-        if os.path.exists(output_path_str):
-            os.remove(output_path_str)
-
-    raise RuntimeError(f"All CLI invocations failed. Last error:\n{last_error}")
-
-
-def compare_prp_json(generated, expected):
-    # Compare structure, allow some flexibility in text fields
-    import difflib
-
-    assert isinstance(generated, dict) and isinstance(expected, dict), (
-        f"Generated and expected must be dicts. Got: {type(generated)} and {type(expected)}"
-    )
-    for key in expected:
-        assert key in generated, (
-            f"Missing key: {key}\nExpected keys: {list(expected.keys())}\nGenerated keys: {list(generated.keys())}"
-        )
-        if isinstance(expected[key], str):
-            exp, gen = expected[key].strip(), generated[key].strip()
-            if exp != gen:
-                diff = "\n".join(
-                    difflib.unified_diff(
-                        exp.splitlines(),
-                        gen.splitlines(),
-                        fromfile="expected",
-                        tofile="generated",
-                        lineterm="",
-                    )
-                )
-                raise AssertionError(
-                    f"Mismatch in '{key}':\nDiff:\n{diff}\nExpected:\n{exp}\nGenerated:\n{gen}"
-                )
-        else:
-            if expected[key] != generated[key]:
-                raise AssertionError(
-                    f"Mismatch in '{key}':\nExpected: {expected[key]}\nGenerated: {generated[key]}"
-                )
-
-
-GOLDEN_DIR = Path(__file__).parent / "golden"
-golden_cases = find_golden_cases(GOLDEN_DIR)
-
-
-@pytest.mark.slow  # Mark golden tests as slow
-@pytest.mark.skipif(not golden_cases, reason="No golden cases found")
-@pytest.mark.parametrize("goal_md,expected_json", golden_cases)
-def test_golden_prp(goal_md, expected_json):
-    with open(expected_json, "r") as f:
-        expected = json.load(f)
-    generated = run_prp_compiler(goal_md)
-    compare_prp_json(generated, expected)
+    assert generated_output == expected_output, f"Output mismatch for case '{name}'"

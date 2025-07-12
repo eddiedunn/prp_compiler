@@ -10,24 +10,21 @@ from src.prp_compiler.orchestrator import Orchestrator
 def mock_loader():
     """A pytest fixture to create a mocked PrimitiveLoader."""
     loader = MagicMock()
-
-    def get_primitive_side_effect(primitive_type, name):
-        if primitive_type == "actions" and name == "retrieve_knowledge":
-            return {
+    loader.primitives = {
+        "actions": {
+            "retrieve_knowledge": {
                 "name": "retrieve_knowledge",
                 "entrypoint": "src.prp_compiler.knowledge:KnowledgeStore:retrieve",
                 "description": "Retrieves knowledge chunks.",
             }
-        return None
+        }
+    }
 
     def get_content_side_effect(primitive_type, name):
         if primitive_type == "schemas" and name == "my_schema":
             return '{"description": "A test schema"}'
-        if primitive_type == "patterns" and name == "my_pattern":
-            return "This is the pattern content."
         return ""
 
-    loader.get_primitive.side_effect = get_primitive_side_effect
     loader.get_primitive_content.side_effect = get_content_side_effect
     return loader
 
@@ -53,29 +50,36 @@ def test_orchestrator_dynamic_action(
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
 
-    # Redefine the mock planner to return a simpler action
+    # Redefine the mock planner to be a coroutine that waits for an observation
     def mock_planning_loop(*args, **kwargs):
+        # The first `send` from the orchestrator is the initial observation
+        observation = yield
+
+        # Now, yield the first action step
         action = Action(
             tool_name="retrieve_knowledge", arguments={"query": "test query"}
         )
-        yield ReActStep(
+        step1 = ReActStep(
             thought=Thought(reasoning="test", criticism="test", next_action=action)
         )
-        # Immediately finish
+        observation = yield step1
+
+        # Yield the finish action
         finish_action = Action(
             tool_name="finish",
             arguments={"schema_choice": "my_schema", "pattern_references": []},
         )
-        yield ReActStep(
+        step2 = ReActStep(
             thought=Thought(
                 reasoning="done", criticism="none", next_action=finish_action
             )
         )
+        yield step2
 
     orchestrator.planner.run_planning_loop = mock_planning_loop
 
     # Act
-    schema, context = orchestrator.run("test goal")
+    schema, context = orchestrator.run("test goal", "")
 
     # Assert
     # Check that the mock function was called

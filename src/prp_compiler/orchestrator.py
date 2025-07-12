@@ -101,60 +101,70 @@ class Orchestrator:
         except (ImportError, AttributeError, TypeError, Exception) as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
-    def run(self, user_goal: str, max_steps: int = 10) -> Tuple[str, str]:
+    def run(self, user_goal: str, constitution: str, max_steps: int = 10) -> Tuple[str, str]:
         """Drives the main ReAct loop and assembles the final context."""
-        planner_gen = self.planner.run_planning_loop(user_goal, max_steps=max_steps)
+        planner_gen = self.planner.run_planning_loop(
+            user_goal, constitution, max_steps=max_steps
+        )
         final_context_parts = []
         final_plan_args = None
         observation = "No observation yet. Start by thinking about the user's goal."
 
-        try:
-            # Prime the generator to get the first step
-            step = next(planner_gen)
+        next(planner_gen)  # Prime the generator to its first yield.
 
-            for _ in range(max_steps):
+        while True:
+            try:
+                step = planner_gen.send(observation)
+
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"
                     f"Critique: {step.thought.criticism}"
                 )
                 final_context_parts.append(thought_text)
-                # logging.info(thought_text)
 
                 action = step.thought.next_action
                 action_text = f"Action: {action.tool_name}({action.arguments})"
                 final_context_parts.append(action_text)
-                # logging.info(action_text)
 
-                # Execute the action and send observation back
+                if action.tool_name == "finish":
+                    final_plan_args = action.arguments
+                    break
+
                 observation = self.execute_action(action)
-                step = planner_gen.send(observation)
+                final_context_parts.append(f"Observation: {observation}")
 
-            # After the loop, assemble the final context
-            if not final_plan_args:
+            except StopIteration as e:
+                final_plan_args = e.value
+                break
+            except Exception as e:
                 return (
                     "",
-                    "[ERROR] Planner did not finish with a final plan.\n\n"
+                    f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
                     + "\n\n".join(final_context_parts),
                 )
 
-            schema_choice = final_plan_args.get("schema_choice", "")
-            _ = self.primitive_loader.get_primitive_content("schemas", schema_choice)
-            for pattern_ref in final_plan_args.get("pattern_references", []):
-                pattern_content = self.primitive_loader.get_primitive_content(
-                    "patterns", pattern_ref
-                )
-                final_context_parts.append(
-                    f"Pattern: {pattern_ref}\n{pattern_content}"
-                )
-            final_context = "\n\n".join(final_context_parts)
-            return (final_context, "")
-
-        except Exception as e:
+        # After the loop, assemble the final context
+        if not final_plan_args:
             return (
                 "",
-                f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
+                "[ERROR] Planner did not finish with a final plan.\n\n"
                 + "\n\n".join(final_context_parts),
             )
+
+        schema_choice = final_plan_args.get("schema_choice", "")
+        schema_content = self.primitive_loader.get_primitive_content("schemas", schema_choice)
+        final_context_parts.append(f"Schema: {schema_choice}\n{schema_content}")
+
+        for pattern_ref in final_plan_args.get("pattern_references", []):
+            pattern_content = self.primitive_loader.get_primitive_content(
+                "patterns", pattern_ref
+            )
+            final_context_parts.append(
+                f"Pattern: {pattern_ref}\n{pattern_content}"
+            )
+
+        final_context = "\n\n".join(final_context_parts)
+        return (schema_content, final_context)
 
         return (
             "",

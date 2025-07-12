@@ -66,10 +66,11 @@ def test_run_planning_loop_calls_finish(monkeypatch):
 
     # Run and interact with the generator
     user_goal = "Write a PRP for X"
-    planner_gen = planner.run_planning_loop(user_goal, max_steps=2)
+    planner_gen = planner.run_planning_loop(user_goal, "", max_steps=2)
 
     # Assert Step 1
-    step1 = next(planner_gen)
+    next(planner_gen)  # Prime the generator
+    step1 = planner_gen.send("Initial observation")
     assert step1.thought.next_action.tool_name == "retrieve_knowledge"
 
     # Assert Step 2 (after sending an observation)

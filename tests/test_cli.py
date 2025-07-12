@@ -14,27 +14,28 @@ def mock_orchestrator(monkeypatch):
         def __init__(self, loader, knowledge_store):
             pass
 
-        def run(self, goal):
-            return (
-                {
-                    "type": "object",
-                    "properties": {
-                        "goal": {"type": "string"},
-                        "why": {"type": "string"},
-                        "what": {"type": "object"},
-                        "context": {"type": "object"},
-                        "implementation_blueprint": {"type": "object"},
-                        "validation_loop": {"type": "object"},
-                    },
-                    "required": [
-                        "goal",
-                        "why",
-                        "what",
-                        "context",
-                        "implementation_blueprint",
-                        "validation_loop",
-                    ],
+        def run(self, goal, constitution):
+            schema_dict = {
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string"},
+                    "why": {"type": "string"},
+                    "what": {"type": "object"},
+                    "context": {"type": "object"},
+                    "implementation_blueprint": {"type": "object"},
+                    "validation_loop": {"type": "object"},
                 },
+                "required": [
+                    "goal",
+                    "why",
+                    "what",
+                    "context",
+                    "implementation_blueprint",
+                    "validation_loop",
+                ],
+            }
+            return (
+                json.dumps(schema_dict),
                 "dummy context",
             )
 
