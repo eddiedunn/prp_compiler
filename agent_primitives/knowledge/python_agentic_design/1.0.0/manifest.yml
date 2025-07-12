@@ -1,5 +1,0 @@
-name: "python_agentic_design"
-type: "knowledge"
-version: "1.0.0"
-description: "Best practices for building agentic systems in Python, using libraries like Pydantic, Typer, and Gemini."
-keywords: ["python", "agentic", "pydantic", "gemini"]

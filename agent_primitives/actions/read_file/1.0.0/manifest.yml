@@ -1,0 +1,12 @@
+name: "read_file"
+type: "action"
+version: "1.0.0"
+description: "Reads the entire content of a single file from the local filesystem. Use this to understand specific files mentioned in a goal."
+entrypoint: "read_file.py:run"
+inputs_schema:
+  type: "object"
+  properties:
+    file_path:
+      type: "string"
+      description: "The absolute or relative path to the file."
+  required: ["file_path"]

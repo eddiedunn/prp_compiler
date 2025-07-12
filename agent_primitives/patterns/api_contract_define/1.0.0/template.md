@@ -1,75 +1,80 @@
----
-name: "Define API Contract"
-description: "Define a detailed API contract between the backend and frontend for a given feature, including RESTful endpoints and DTOs."
-arguments: "$ARGUMENTS"
-keywords:
-  - api
-  - contract
-  - rest
-  - dto
-  - backend
-  - frontend
----
+# API Contract Definition Pattern
 
-# Define API Contract Between Backend and Frontend
+## 1. Overview
 
-Feature: $ARGUMENTS
+- **API Name:** A clear, descriptive name for the API.
+- **Version:** The current version of the contract (e.g., v1, v2).
+- **Description:** A brief summary of the API's purpose and what it provides.
+- **Owner/Team:** The team responsible for maintaining the API.
 
-## Task: Create detailed API contract specification for backend/frontend coordination
+## 2. Authentication
 
-1. **Define RESTful endpoints**:
+- **Method:** Describe the authentication mechanism (e.g., OAuth 2.0, API Key, JWT).
+- **Required Headers/Parameters:** Specify headers like `Authorization`.
+- **Token Endpoint (if applicable):** The URL to obtain an access token.
 
-   ```yaml
-   Base URL: /api/v1/{feature}
+## 3. Endpoints
 
-   Endpoints:
-   - GET /api/v1/{features}
-     Query params: page, size, sort, filter
-     Response: Page<{Feature}Response>
+For each endpoint, provide the following details:
 
-   - GET /api/v1/{features}/{id}
-     Path param: id (Long)
-     Response: {Feature}Response
+### `[HTTP_METHOD] /[resource_path]`
 
-   - POST /api/v1/{features}
-     Body: {Feature}Request
-     Response: {Feature}Response (201 Created)
+- **Description:** What does this endpoint do? What is its business purpose?
+- **Request:**
+    - **URL Parameters:** (e.g., `/users/{userId}`)
+        - `userId` (string, required): The unique identifier for the user.
+    - **Query Parameters:**
+        - `sort` (string, optional): The field to sort by. Defaults to `createdAt`.
+    - **Headers:**
+        - `Content-Type`: `application/json`
+    - **Request Body (DTO - Data Transfer Object):**
+        ```json
+        {
+          "name": "string",
+          "email": "string (email format)"
+        }
+        ```
+- **Success Response (2xx):**
+    - **Status Code:** `200 OK` or `201 Created`
+    - **Response Body:**
+        ```json
+        {
+          "id": "string (uuid)",
+          "name": "string",
+          "email": "string (email format)",
+          "createdAt": "string (ISO 8601 datetime)"
+        }
+        ```
+- **Error Responses (4xx/5xx):**
+    - **Status Code:** `400 Bad Request`
+        - **Reason:** Invalid input format.
+        - **Response Body:**
+            ```json
+            {
+              "error": "InvalidEmail",
+              "message": "The provided email address is not valid."
+            }
+            ```
+    - **Status Code:** `404 Not Found`
+        - **Reason:** The requested resource does not exist.
+        - **Response Body:**
+            ```json
+            {
+              "error": "NotFound",
+              "message": "User with the specified ID was not found."
+            }
+            ```
 
-   - PUT /api/v1/{features}/{id}
-     Path param: id (Long)
-     Body: {Feature}Request
-     Response: {Feature}Response
+## 4. Data Models (DTOs)
 
-   - DELETE /api/v1/{features}/{id}
-     Path param: id (Long)
-     Response: 204 No Content
-   ```
+Define any complex objects used in requests or responses.
 
-2. **Define request/response DTOs**:
+- **User:**
+    - `id` (string, uuid): Unique identifier.
+    - `name` (string): User's full name.
+    - `email` (string, email): User's email address.
 
-   ```typescript
-   // Request DTO (for POST/PUT)
-   interface {Feature}Request {
-     name: string;        // min: 2, max: 100
-     description?: string; // max: 1000
-     // Add domain-specific fields
-   }
+## 5. Rate Limiting
 
-   // Response DTO (for GET)
-   interface {Feature}Response {
-     id: number;
-     // Add domain-specific fields
-   }
-   ```
-
-3. **Define error cases and status codes**:
-
-   - 400 Bad Request: Invalid input
-   - 401 Unauthorized: Not authenticated
-   - 403 Forbidden: Not authorized
-   - 404 Not Found: Resource missing
-   - 500 Internal Server Error: Unexpected failure
-
----
-
-_This template is intended for use in the PRP v2.0 pattern system._
+- **Limit:** Specify the number of requests allowed per time window (e.g., 100 requests per minute).
+- **Headers:** Describe response headers that provide rate limit status (e.g., `X-RateLimit-Limit`, `X-RateLimit-Remaining`).

@@ -1,0 +1,6 @@
+name: "debug_rca"
+type: "pattern"
+version: "1.0.0"
+description: "A structured pattern for performing root cause analysis on a bug or issue. Follow these steps when asked to debug a problem."
+entrypoint: "template.md"
+keywords: ["debug", "bug", "rca", "troubleshoot", "error"]
