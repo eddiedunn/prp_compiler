@@ -11,10 +11,14 @@ You are an expert AI engineering architect. Your goal is to gather all necessary
 information to create a comprehensive PRP for the user's goal.
 You operate in a loop of Thought -> Action -> Observation.
 
-1.  **Thought:** Think about the user's goal, your plan so far, and critique your own reasoning. Record both your reasoning and any self-criticism.
-2.  **Action:** Choose one of the available tools to execute. When you have enough information, call the "finish" tool.
+1.  **Thought:** Think about the user's goal, your plan so far, and critique
+    your own reasoning.
+    Record both your reasoning and any self-criticism.
+2.  **Action:** Choose one of the available tools to execute.
+    When you have enough information, call the "finish" tool.
 
-You MUST include your reasoning and criticism as fields in the arguments of every function call (including finish).
+You MUST include your reasoning and criticism as fields in the arguments
+of every function call (including finish).
 
 You have access to the following tools:
 {tools_json_schema}
@@ -24,7 +28,9 @@ Your history of thoughts, actions, and observations so far:
 
 User's Goal: "{user_goal}"
 
-Based on your history, what is your next thought and action? Respond with a single function call, with reasoning and criticism included in the arguments.
+Based on your history, what is your next thought and action?
+Respond with a single function call, with reasoning and 
+criticism included in the arguments.
 """
 
 
@@ -56,11 +62,17 @@ class PlannerAgent(BaseAgent):
                             },
                             "reasoning": {
                                 "type": "string",
-                                "description": "Your reasoning for choosing this action.",
+                                "description": (
+                                    "Your reasoning for choosing this action. "
+                                    "Please provide a clear explanation."
+                                ),
                             },
                             "criticism": {
                                 "type": "string",
-                                "description": "Self-criticism or uncertainty about this step.",
+                                "description": (
+                                    "Self-criticism or uncertainty about this step. "
+                                    "Please provide any concerns or doubts."
+                                ),
                             },
                         },
                         "required": ["query", "reasoning", "criticism"],
@@ -71,13 +83,19 @@ class PlannerAgent(BaseAgent):
         gemini_tools.append(
             {
                 "name": "finish",
-                "description": "Call this when you have gathered all necessary information.",
+                "description": (
+                    "Call this when you have gathered all necessary information. "
+                    "Please ensure you have completed all required steps."
+                ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "reasoning": {
                             "type": "string",
-                            "description": "Your final reasoning for why the context is complete.",
+                            "description": (
+                                "Your final reasoning for why the context is "
+                                "complete."
+                            ),
                         },
                         "criticism": {
                             "type": "string",
@@ -85,12 +103,16 @@ class PlannerAgent(BaseAgent):
                         },
                         "schema_choice": {
                             "type": "string",
-                            "description": "The name of the final output schema to use.",
+                            "description": (
+                                "The name of the final output schema to use."
+                            ),
                         },
                         "pattern_references": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "List of pattern names to include as context.",
+                            "description": (
+                                "List of pattern names to include as context."
+                            ),
                         },
                     },
                     "required": [
@@ -106,7 +128,8 @@ class PlannerAgent(BaseAgent):
 
     def run_planning_loop(self, user_goal: str, max_steps: int = 10):
         """
-        Generator-based ReAct loop. Yields each Action (with Thought), expects observation via .send().
+        Generator-based ReAct loop. Yields each Action (with Thought),
+        expects observation via .send().
         Terminates when the "finish" tool is chosen or max_steps is reached.
         """
         history: List[ReActStep] = []

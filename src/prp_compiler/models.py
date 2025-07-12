@@ -36,7 +36,10 @@ class PRPOutput(BaseModel):
         description="The technical requirements and success criteria."
     )
     context: Dict[str, Any] = Field(
-        description="All assembled context, including documentation references and code patterns."
+        description=(
+            "All assembled context, including documentation references and "
+            "code patterns."
+        )
     )
     implementation_blueprint: Dict[str, Any] = Field(
         description="The step-by-step implementation plan."

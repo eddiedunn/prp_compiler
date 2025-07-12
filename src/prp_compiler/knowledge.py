@@ -57,9 +57,10 @@ class KnowledgeStore:
         if not self.persist_directory.exists():
             raise FileNotFoundError(
                 (
-                f"KnowledgeStore persist directory not found at {self.persist_directory}. "
-                f"Please run with '--build-knowledge' first."
-            )
+                    f"KnowledgeStore persist directory not found at "
+                    f"{self.persist_directory}. "
+                    f"Please run with '--build-knowledge' first."
+                )
             )
 
         self.db = Chroma(

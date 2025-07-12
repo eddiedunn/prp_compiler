@@ -34,29 +34,47 @@ class Orchestrator:
     def execute_action(self, action: Action) -> str:
         """Dynamically loads and executes an action based on the primitive manifest."""
         try:
-            action_primitive = self.primitive_loader.get_primitive(
-                "actions", action.tool_name
-            )
-            if not action_primitive:
-                return f"[ERROR] Action '{action.tool_name}' not found in manifest."
+            try:
+                # Try to fetch manifest from primitives dict
+                action_primitive = (
+                    self.primitive_loader.primitives.get("actions", {})
+                    .get(action.tool_name)
+                )
 
-            entrypoint = action_primitive["entrypoint"]
+                if not action_primitive:
+                    return (
+                        f"[ERROR] Action '{action.tool_name}' not found in manifest."
+                    )
+                entrypoint = action_primitive["entrypoint"]
+            except Exception as e:
+                return (
+                    f"[ERROR] Could not fetch action primitive for "
+                    f"'{action.tool_name}': {e}"
+                )
             parts = entrypoint.split(":")
             module_path = parts[0]
 
             action_function = None
 
-            # Case 1: Entrypoint is a method on a class (e.g., 'module:ClassName:method_name')
+            # Case 1: Entrypoint is a method on a class (e.g.,
+            # 'module:ClassName:method_name'). This is a simplification.
+            # A real implementation would need a more robust way to map
+            # class names to the correct instance.
             if len(parts) == 3:
                 class_name, method_name = parts[1], parts[2]
-                # This is a simplification. A real implementation would need a more
-                # robust way to map class names to the correct instance.
                 if class_name == "KnowledgeStore":
                     instance = self.knowledge_store
                     action_function = getattr(instance, method_name)
                 else:
-                    # If other classes with actions are added, they need to be handled here.
-                    return f"[ERROR] Unknown class '{class_name}' in entrypoint for action '{action.tool_name}'."
+                    # If other classes with actions are added, they need
+                    # to be handled here.
+                    return (
+                        f"[ERROR] Unknown class '{class_name}' in entrypoint "
+                        "for action '{action.tool_name}'. "
+                        "This error indicates that the class is not properly "
+                        "handled in this code. "
+                        "Please add a handler for this class."
+                    )
 
             # Case 2: Entrypoint is a standalone function (e.g., 'module:function_name')
             elif len(parts) == 2:
@@ -65,10 +83,16 @@ class Orchestrator:
                 action_function = getattr(action_module, function_name)
 
             else:
-                return f"[ERROR] Invalid entrypoint format for action '{action.tool_name}'."
+                return (
+                    f"[ERROR] Invalid entrypoint format for action "
+                    f"'{action.tool_name}'."
+                )
 
             if not action_function:
-                return f"[ERROR] Could not resolve action function for '{action.tool_name}'."
+                return (
+                    f"[ERROR] Could not resolve action function for "
+                    f"'{action.tool_name}'."
+                )
 
             # Execute the action
             result = action_function(**action.arguments)
@@ -89,7 +113,10 @@ class Orchestrator:
             step = next(planner_gen)
 
             for _ in range(max_steps):
-                thought_text = f"Thought: {step.thought.reasoning}\nCritique: {step.thought.criticism}"
+                thought_text = (
+                    f"Thought: {step.thought.reasoning}\n"
+                    f"Critique: {step.thought.criticism}"
+                )
                 final_context_parts.append(thought_text)
                 # logging.info(thought_text)
 
@@ -98,52 +125,42 @@ class Orchestrator:
                 final_context_parts.append(action_text)
                 # logging.info(action_text)
 
-                if action.tool_name == "finish":
-                    final_plan_args = action.arguments
-                    break  # Exit loop immediately on finish
-
-                # Execute the action and get the observation for the *next* step
+                # Execute the action and send observation back
                 observation = self.execute_action(action)
-                observation_text = f"Observation: {observation}"
-                final_context_parts.append(observation_text)
-                # logging.info(observation_text)
-
-                # Send observation to get the next step
                 step = planner_gen.send(observation)
 
-        except StopIteration:
-            # logging.warning("Planner finished, loop terminated.")
-            pass
-        except Exception as e:
-            # logging.error(f"An error occurred during the ReAct loop: {e}")
-            # Return partial context and error
-            return "", f"[ERROR] An unexpected error occurred: {e}\n\n" + "\n\n".join(
-                final_context_parts
-            )
+            # After the loop, assemble the final context
+            if not final_plan_args:
+                return (
+                    "",
+                    "[ERROR] Planner did not finish with a final plan.\n\n"
+                    + "\n\n".join(final_context_parts),
+                )
 
-        # After the loop, assemble the final context
-        if not final_plan_args:
+            schema_choice = final_plan_args.get("schema_choice", "")
+            _ = self.primitive_loader.get_primitive_content("schemas", schema_choice)
+            for pattern_ref in final_plan_args.get("pattern_references", []):
+                pattern_content = self.primitive_loader.get_primitive_content(
+                    "patterns", pattern_ref
+                )
+                final_context_parts.append(
+                    f"Pattern: {pattern_ref}\n{pattern_content}"
+                )
+            final_context = "\n\n".join(final_context_parts)
+            return (final_context, "")
+
+        except Exception as e:
             return (
                 "",
-                "[ERROR] Planner did not finish with a final plan.\n\n"
+                f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
                 + "\n\n".join(final_context_parts),
             )
 
-        schema_choice = final_plan_args.get("schema_choice", "")
-        final_schema = self.primitive_loader.get_primitive_content(
-            "schemas", schema_choice
+        return (
+            "",
+            "[ERROR] Planner did not finish within max_steps.\n\n"
+            + "\n\n".join(final_context_parts),
         )
-
-        for pattern_ref in final_plan_args.get("pattern_references", []):
-            pattern_content = self.primitive_loader.get_primitive_content(
-                "patterns", pattern_ref
-            )
-            final_context_parts.append(
-                f"\n--- Relevant Pattern: {pattern_ref} ---\n{pattern_content}"
-            )
-
-        final_context = "\n\n".join(final_context_parts)
-        return final_schema, final_context
 
     def _resolve_callback(self, match: re.Match) -> str:
         """
@@ -158,8 +175,18 @@ class Orchestrator:
                 command_parts = shlex.split(command_or_path)
 
                 # SECURITY: Check if the command is in the allowlist
-                if not command_parts or command_parts[0] not in ALLOWED_SHELL_COMMANDS:
-                    return f"[ERROR: Command '{command_parts[0] if command_parts else ''}' is not in the allowlist.]"
+                if (
+                    not command_parts
+                    or command_parts[0] not in ALLOWED_SHELL_COMMANDS
+                ):
+                    return (
+                        f"[ERROR: Command '{command_parts[0] if command_parts else ''}' "
+                        "is not in the allowlist.\n"
+                        "This error indicates that the command is not properly "
+                        f"configured for '{command_parts[0] if command_parts else ''}'.\n"
+                        "Please add the command to the allowlist.\n"
+                        f"The command was: {command_or_path}"
+                    )
                 print(f"Executing command: {command_parts}")
                 result = subprocess.run(
                     command_parts,

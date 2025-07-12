@@ -1,8 +1,9 @@
 import json
-
+import google.generativeai as genai
 from jsonschema import ValidationError, validate
-
 from .base_agent import BaseAgent
+
+generation_config = None  # TODO: Set default config or import if defined elsewhere
 
 SYNTHESIZER_PROMPT_TEMPLATE = """
 You are an expert prompt engineer. Your task is to generate a complete and
@@ -24,7 +25,10 @@ class SynthesizerAgent(BaseAgent):
     def synthesize(
         self, schema: dict, context: str, constitution: str, max_retries: int = 2
     ) -> dict:
-        """Generates the final PRP JSON, validating it against the schema and retrying if necessary."""
+        """Generates the final PRP JSON, validating it against the schema and
+        retrying if necessary. This function ensures the generated JSON conforms
+        to the provided schema and retries the generation if the initial attempt
+        is unsuccessful."""
         prompt = (
             constitution
             + "\n\n"
@@ -44,13 +48,16 @@ class SynthesizerAgent(BaseAgent):
                 generated_json = json.loads(cleaned_response_text)
                 validate(instance=generated_json, schema=schema)
                 print(
-                    f"Synthesizer output validated successfully on attempt {attempt + 1}."
+                    f"Synthesizer output validated successfully on attempt "
+                    f"{attempt + 1}."
                 )
                 return generated_json
             except (json.JSONDecodeError, ValidationError) as e:
                 print(
-                    (f"[Warning] Synthesizer output validation failed on attempt "
- f"{attempt + 1}: {e}")
+                    f"[Warning] Synthesizer output validation failed on attempt "
+                    f"{attempt + 1}: {e}. Raw Response: {cleaned_response_text}. "
+                    f"Please correct the JSON output to strictly conform to the "
+                    f"schema."
                 )
                 prompt += (
     f"\n\nPREVIOUS ATTEMPT FAILED. DO NOT REPEAT THE MISTAKE. "

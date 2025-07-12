@@ -13,7 +13,9 @@ class PrimitiveLoader:
         self.primitives = self._load_all()
 
     def _load_all(self) -> Dict[str, Any]:
-        """Walks the base path and loads the latest compatible version of each primitive."""
+        """
+        Walks the base path and loads the latest compatible version of each primitive.
+        """
         loaded: dict[str, Any] = {}
         for primitive_type_path in self.base_path.iterdir():
             if not primitive_type_path.is_dir():
