@@ -1,100 +1,53 @@
-from unittest.mock import MagicMock
-
 import pytest
-
+from unittest.mock import MagicMock, patch
 from src.prp_compiler.agents.planner import PlannerAgent
-from src.prp_compiler.models import ManifestItem
-
-
-class DummyPrimitiveLoader:
-    def get_all(self, kind):
-        if kind == "actions":
-            return [
-                {
-                    "name": "retrieve_knowledge",
-                    "description": "Retrieve knowledge",
-                    "arguments": "A query string",
-                }
-            ]
-        return []
-
+from src.prp_compiler.models import Action
 
 @pytest.fixture
-def planner_agent(monkeypatch):
-    """Provides a PlannerAgent instance for testing."""
-    mock_model_instance = MagicMock()
-    monkeypatch.setattr(
-        "google.generativeai.GenerativeModel",
-        MagicMock(return_value=mock_model_instance),
-    )
+def mock_primitive_loader():
+    loader = MagicMock()
+    loader.get_all.return_value = [{
+        "name": "retrieve_knowledge", "description": "desc", "inputs_schema": {"type": "object", "properties": {"query": {"type": "string"}}}
+    }]
+    return loader
 
-    loader = DummyPrimitiveLoader()
-    agent = PlannerAgent(loader)
-    agent.model = mock_model_instance
-    return agent
+def make_mock_gemini_response(tool_name, args):
+    """Helper to create a mock Gemini response object."""
+    fc = MagicMock()
+    fc.name = tool_name
+    fc.args = args
+    part = MagicMock(function_call=fc)
+    candidate = MagicMock(content=MagicMock(parts=[part]))
+    return MagicMock(candidates=[candidate])
 
-
-@pytest.fixture
-def sample_manifests():
-    """Provides sample manifest data for testing."""
-    tools = [
-        ManifestItem(name="tool1", description="A test tool", file_path="/path/tool1")
-    ]
-    knowledge = [
-        ManifestItem(name="doc1", description="A knowledge doc", file_path="/path/doc1")
-    ]
-    schemas = [
-        ManifestItem(name="schema1", description="A schema", file_path="/path/schema1")
-    ]
-    return tools, knowledge, schemas
-
-
-def test_run_planning_loop(planner_agent):
-    # Setup
-    mock_model = planner_agent.model
-
-    # Mock function_call objects for two steps
-    retrieve_fc = MagicMock()
-    retrieve_fc.name = "retrieve_knowledge"
-    retrieve_fc.args = {"query": "test query", "reasoning": "r1", "criticism": "c1"}
-
-    finish_fc = MagicMock()
-    finish_fc.name = "finish"
-    finish_fc.args = {
-        "schema_choice": "standard_prp",
-        "pattern_references": ["pattern1"],
-        "reasoning": "r2",
-        "criticism": "c2",
-    }
-
-    # Mock response objects
-    retrieve_response = MagicMock()
-    retrieve_response.candidates = [
-        MagicMock(content=MagicMock(parts=[MagicMock(function_call=retrieve_fc)]))
-    ]
-    finish_response = MagicMock()
-    finish_response.candidates = [
-        MagicMock(content=MagicMock(parts=[MagicMock(function_call=finish_fc)]))
-    ]
-
-    # Side effect for generate_content: first call returns retrieve, second returns finish
-    mock_model.generate_content.side_effect = [retrieve_response, finish_response]
-
-    # Run and interact with the generator
-    user_goal = "Write a PRP for X"
-    planner_gen = planner_agent.run_planning_loop(user_goal, max_steps=2)
-
-    # Assert Step 1
-    step1 = next(planner_gen)
-    assert step1.thought.next_action.tool_name == "retrieve_knowledge"
-
-    # Assert Step 2 (after sending an observation)
+def test_run_planning_loop(mock_primitive_loader):
+    # Arrange
+    planner = PlannerAgent(mock_primitive_loader)
+    
+    # Mock a sequence of two responses from the Gemini model
+    retrieve_response = make_mock_gemini_response('retrieve_knowledge', {"query": "test"})
+    finish_response = make_mock_gemini_response('finish', {"schema_choice": "final_schema", "pattern_references": ["p1"]})
+    planner.model.generate_content.side_effect = [retrieve_response, finish_response]
+    
+    # Act
+    planner_gen = planner.run_planning_loop("test goal", constitution="")
+    
+    # Step 1: Yield first action
+    first_action = next(planner_gen)
+    assert isinstance(first_action, Action)
+    assert first_action.tool_name == "retrieve_knowledge"
+    
+    # Step 2: Send observation and yield second action
     try:
-        step2 = planner_gen.send("Mock observation for retrieve.")
-        assert step2.thought.next_action.tool_name == "finish"
-    except StopIteration:
-        pytest.fail("Generator stopped prematurely. It should yield the 'finish' step.")
+        final_args = planner_gen.send("Observation from retrieve")
+        # This should not be reached, the generator should raise StopIteration with a return value
+        pytest.fail("Generator should have stopped.")
+    except StopIteration as e:
+        final_args = e.value # The return value of a generator is in StopIteration exception
 
-    # Assert generator is exhausted after 'finish'
-    with pytest.raises(StopIteration):
-        planner_gen.send("Another observation.")
+    # Assert
+    assert final_args == {"schema_choice": "final_schema", "pattern_references": ["p1"]}
+    assert planner.model.generate_content.call_count == 2
+    # Check that the history was passed to the second call
+    second_call_prompt = planner.model.generate_content.call_args_list[1][0][0]
+    assert "Observation from retrieve" in second_call_prompt

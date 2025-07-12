@@ -1,176 +1,85 @@
 import json
-from typing import Any, Dict, List
+from typing import List, Dict, Any, Generator
 
-from ..models import Action, ReActStep, Thought
-from ..primitives import PrimitiveLoader
 from .base_agent import BaseAgent
+from ..models import ReActStep, Thought, Action
+from ..primitives import PrimitiveLoader
 
-# This is the new, more sophisticated prompt for the ReAct loop.
 REACT_PROMPT_TEMPLATE = """
-You are an expert AI engineering architect. Your goal is to gather all necessary
-information to create a comprehensive PRP for the user's goal.
+You are an expert AI engineering architect. Your goal is to gather all necessary information to create a comprehensive PRP for the user's goal.
 You operate in a loop of Thought -> Action -> Observation.
 
-1.  **Thought:** Think about the user's goal, your plan so far, and critique
-    your own reasoning.
-    Record both your reasoning and any self-criticism.
-2.  **Action:** Choose one of the available tools to execute.
-    When you have enough information, call the "finish" tool.
-
-You MUST include your reasoning and criticism as fields in the arguments
-of every function call (including finish).
+1.  **Thought:** In your 'reasoning', analyze the user's goal and the history of your previous steps. In your 'criticism', critique your own reasoning to find flaws.
+2.  **Action:** Based on your thought, choose one of the available tools to execute. When you have gathered enough context to build a complete PRP, you MUST call the "finish" tool.
 
 You have access to the following tools:
 {tools_json_schema}
 
-Your history of thoughts, actions, and observations so far:
+Your history of thoughts, actions, and observations so far (the last entry is the most recent):
 {history}
 
 User's Goal: "{user_goal}"
 
-Based on your history, what is your next thought and action?
-Respond with a single function call, with reasoning and 
-criticism included in the arguments.
+Based on your history and the user's goal, what is your next thought and action? You must respond by calling one of the available tool functions.
 """
 
-
 class PlannerAgent(BaseAgent):
-    def __init__(
-        self,
-        primitive_loader: PrimitiveLoader,
-        model_name: str = "gemini-1.5-pro-latest",
-    ):
+    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"):
         super().__init__(model_name=model_name)
         self.primitive_loader = primitive_loader
-        # Convert primitive manifests to Gemini-compatible tool schemas
         self.tools_schema = self._create_tools_schema()
 
     def _create_tools_schema(self) -> List[Dict[str, Any]]:
-        # Dynamically build the tools schema from PrimitiveLoader action manifests
+        """Dynamically builds the tools schema from PrimitiveLoader action manifests for Gemini."""
         gemini_tools = []
-        for action in self.primitive_loader.get_all("actions"):
-            gemini_tools.append(
-                {
-                    "name": action["name"],
-                    "description": action["description"],
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": action.get("arguments", ""),
-                            },
-                            "reasoning": {
-                                "type": "string",
-                                "description": (
-                                    "Your reasoning for choosing this action. "
-                                    "Please provide a clear explanation."
-                                ),
-                            },
-                            "criticism": {
-                                "type": "string",
-                                "description": (
-                                    "Self-criticism or uncertainty about this step. "
-                                    "Please provide any concerns or doubts."
-                                ),
-                            },
-                        },
-                        "required": ["query", "reasoning", "criticism"],
-                    },
-                }
-            )
-        # Add the mandatory finish tool
-        gemini_tools.append(
-            {
-                "name": "finish",
-                "description": (
-                    "Call this when you have gathered all necessary information. "
-                    "Please ensure you have completed all required steps."
-                ),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "reasoning": {
-                            "type": "string",
-                            "description": (
-                                "Your final reasoning for why the context is "
-                                "complete."
-                            ),
-                        },
-                        "criticism": {
-                            "type": "string",
-                            "description": "Any final self-criticism or uncertainties.",
-                        },
-                        "schema_choice": {
-                            "type": "string",
-                            "description": (
-                                "The name of the final output schema to use."
-                            ),
-                        },
-                        "pattern_references": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": (
-                                "List of pattern names to include as context."
-                            ),
-                        },
-                    },
-                    "required": [
-                        "reasoning",
-                        "criticism",
-                        "schema_choice",
-                        "pattern_references",
-                    ],
+        for action in self.primitive_loader.get_all('actions'):
+            gemini_tools.append({
+                "name": action['name'],
+                "description": action['description'],
+                "parameters": action.get('inputs_schema', {"type": "object", "properties": {}})
+            })
+
+        gemini_tools.append({
+            "name": "finish",
+            "description": "Call this when you have gathered all necessary information to write the PRP.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "schema_choice": {"type": "string", "description": "The name of the final output schema to use."},
+                    "pattern_references": {"type": "array", "items": {"type": "string"}, "description": "List of relevant pattern names to include as context."}
                 },
+                "required": ["schema_choice", "pattern_references"]
             }
-        )
+        })
         return gemini_tools
 
-    def run_planning_loop(self, user_goal: str, max_steps: int = 10):
-        """
-        Generator-based ReAct loop. Yields each Action (with Thought),
-        expects observation via .send().
-        Terminates when the "finish" tool is chosen or max_steps is reached.
-        """
-        history: List[ReActStep] = []
-        observation = None
+    def run_planning_loop(self, user_goal: str, constitution: str, max_steps: int = 10) -> Generator[Action, str, dict]:
+        """Drives the ReAct loop, yielding each action and receiving observations."""
+        history = []
         for i in range(max_steps):
-            prompt = REACT_PROMPT_TEMPLATE.format(
+            prompt = constitution + "\n\n" + REACT_PROMPT_TEMPLATE.format(
                 user_goal=user_goal,
                 tools_json_schema=json.dumps(self.tools_schema, indent=2),
-                history="".join(
-                    [
-                        (f"Thought: {s.thought.reasoning}\n"
- f"Action: {s.thought.next_action.tool_name}\n"
- f"Observation: {s.observation}\n")
-                        for s in history
-                    ]
-                ),
+                history="\n".join(history)
             )
+
             response = self.model.generate_content(prompt, tools=self.tools_schema)
             fc_part = response.candidates[0].content.parts[0]
-            if not hasattr(fc_part, "function_call") or fc_part.function_call is None:
+
+            if not hasattr(fc_part, 'function_call'):
                 raise ValueError("Planner Agent did not return a function call.")
+
             fc = fc_part.function_call
-            # Parse the thought and action
-            # Parse reasoning and criticism from function call arguments
-            fc_args = fc.args if hasattr(fc, "args") else fc.parameters
-            reasoning = fc_args.get("reasoning", "")
-            criticism = fc_args.get("criticism", "")
-            # Remove reasoning/criticism from arguments passed to the tool
-            action_args = {
-                k: v for k, v in fc_args.items() if k not in ("reasoning", "criticism")
-            }
-            thought = Thought(
-                reasoning=reasoning,
-                criticism=criticism,
-                next_action=Action(tool_name=fc.name, arguments=action_args),
-            )
-            step = ReActStep(thought=thought, observation=observation)
-            # Yield the action for execution, expect observation via .send()
-            observation = yield step
-            history.append(ReActStep(thought=thought, observation=observation))
-            if thought.next_action.tool_name == "finish":
-                break
-        # Optionally yield the final step
-        return
+            action_args = dict(fc.args) if hasattr(fc, 'args') else {}
+
+            action = Action(tool_name=fc.name, arguments=action_args)
+            
+            # The 'finish' action terminates the loop and returns the final arguments.
+            if action.tool_name == "finish":
+                return action.arguments
+
+            # Yield the action and wait for the orchestrator to send back the observation.
+            observation = yield action
+            history.append(f"Action: {action.tool_name}({action.arguments})\nObservation: {observation}")
+        
+        raise RuntimeError("Planner exceeded max steps without calling 'finish'.")
