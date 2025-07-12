@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Tuple
 from .config import ALLOWED_SHELL_COMMANDS
-from .models import ExecutionPlan
+
 from .agents.planner import PlannerAgent, Action
 
 def load_constitution(root_path: Path) -> str:

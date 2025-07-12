@@ -38,7 +38,16 @@ def compile(
         # Phase 3: Run the Synthesizer
         typer.echo("3. Running Synthesizer Agent to generate final PRP...")
         synthesizer = SynthesizerAgent()
-        final_prp_json = synthesizer.synthesize(schema_template_json, final_context)
+        # Load agent constitution
+        constitution_path = Path("CLAUDE.md")
+        constitution = constitution_path.read_text() if constitution_path.exists() else ""
+        # If schema_template_json is a string, parse as JSON
+        import json
+        if isinstance(schema_template_json, str):
+            schema_template = json.loads(schema_template_json)
+        else:
+            schema_template = schema_template_json
+        final_prp_json = synthesizer.synthesize(schema_template, final_context, constitution)
         # Save the output
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, 'w') as f:
