@@ -53,24 +53,28 @@ class Orchestrator:
             return f"Observation: Executed tool '{action.tool_name}' with args {action.arguments}. [Mocked Result]"
 
     def run(self, user_goal: str) -> Tuple[str, str]:
-        """Drives the main ReAct loop and assembles the final context."""
+        """Drives the main ReAct loop and assembles the final context using the new Planner generator interface."""
         max_steps = 10
-        for _ in range(max_steps):
-            planning_steps = self.planner.run_planning_loop(user_goal)
-            final_context_parts = []
-            final_plan = None
-            for step in planning_steps:
-                if step.thought.next_action.tool_name == "finish":
-                    final_plan = step.thought.next_action.arguments
+        planner_gen = self.planner.run_planning_loop(user_goal, max_steps=max_steps)
+        final_context_parts = []
+        final_plan = None
+        try:
+            step = next(planner_gen)
+            while True:
+                action = step.thought.next_action
+                if action.tool_name == "finish":
+                    final_plan = action.arguments
                     break
-                observation = self.execute_action(step.thought.next_action)
-                step.observation = observation
-                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {step.thought.next_action.tool_name}\nObservation: {observation}")
-            if final_plan:
-                schema_template = self.primitive_loader.primitives['schemas'][final_plan['schema_choice']]['content']
-                for pattern_name in final_plan.get('pattern_references', []):
-                    final_context_parts.append(self.primitive_loader.primitives['patterns'][pattern_name]['content'])
-                return schema_template, "\n---\n".join(final_context_parts)
+                observation = self.execute_action(action)
+                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {action.tool_name}\nObservation: {observation}")
+                step = planner_gen.send(observation)
+        except StopIteration:
+            pass
+        if final_plan:
+            schema_template = self.primitive_loader.primitives['schemas'][final_plan['schema_choice']]['content']
+            for pattern_name in final_plan.get('pattern_references', []):
+                final_context_parts.append(self.primitive_loader.primitives['patterns'][pattern_name]['content'])
+            return schema_template, "\n---\n".join(final_context_parts)
         raise RuntimeError("Planner failed to finish within max steps.")
 
     def assemble_context(self, plan: ExecutionPlan) -> Tuple[str, str]:
@@ -138,19 +142,8 @@ class Orchestrator:
                     timeout=30,
                 )
                 return result.stdout.strip()
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            except Exception as e:
                 return f"[ERROR: Command '{command_or_path}' failed: {e}]"
-        elif prefix == "@":
-            try:
-                # Read file content
-                file_path = Path(command_or_path)
-                return file_path.read_text().strip()
-            except FileNotFoundError:
-                return f"[ERROR: File not found at '{command_or_path}']"
-            except IOError as e:
-                return f"[ERROR: Could not read file at '{command_or_path}': {e}]"
-
-        return match.group(0)  # Should not happen with the given regex
 
     def _resolve_dynamic_content(self, raw_context: str) -> str:
         """

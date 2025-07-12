@@ -1,11 +1,59 @@
+from unittest.mock import MagicMock
 import pytest
-from unittest.mock import patch
-import os
-import stat
-import tempfile
-
 from src.prp_compiler.orchestrator import Orchestrator
-from src.prp_compiler.models import ManifestItem, ExecutionPlan, ToolPlanItem
+
+class DummyPrimitiveLoader:
+    def get_all_names(self, kind):
+        return ["retrieve_knowledge"]
+    def get_primitive(self, kind, name):
+        if kind == "schemas" and name == "my_schema":
+            return {"base_path": "/tmp", "entrypoint": "schema.json"}
+        return None
+
+class DummyKnowledgeStore:
+    def __init__(self):
+        self.retrieve = MagicMock(return_value=["doc1", "doc2"])
+
+class DummyPlanner:
+    def __init__(self, steps):
+        self.steps = steps
+        self.idx = 0
+    def run_planning_step(self, user_goal, history):
+        step = self.steps[self.idx]
+        self.idx += 1
+        return step
+
+class DummyAction:
+    def __init__(self, tool_name, arguments):
+        self.tool_name = tool_name
+        self.arguments = arguments
+
+class DummyThought:
+    def __init__(self, tool_name, arguments):
+        self.reasoning = ""
+        self.criticism = ""
+        self.next_action = DummyAction(tool_name, arguments)
+
+class DummyReActStep:
+    def __init__(self, tool_name, arguments):
+        self.thought = DummyThought(tool_name, arguments)
+        self.observation = None
+
+def test_run_orchestrates_loop(monkeypatch):
+    loader = DummyPrimitiveLoader()
+    knowledge_store = DummyKnowledgeStore()
+    # Sequence: retrieve_knowledge, then finish
+    steps = [
+        DummyReActStep("retrieve_knowledge", {"query": "foo"}),
+        DummyReActStep("finish", {"schema_choice": "my_schema", "pattern_references": ["pat1"], "final_plan": "done"}),
+    ]
+    orchestrator = Orchestrator(loader, knowledge_store)
+    orchestrator.planner = DummyPlanner(steps)
+    schema, context = orchestrator.run("my user goal")
+    # Check that retrieve was called
+    knowledge_store.retrieve.assert_called_with("foo")
+    assert schema["entrypoint"] == "schema.json"
+    assert context == "done"
 
 
 @pytest.fixture

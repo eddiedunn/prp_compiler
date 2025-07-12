@@ -60,35 +60,40 @@ class PlannerAgent(BaseAgent):
         })
         return gemini_tools
 
-    def run_planning_loop(self, user_goal: str, max_steps: int = 10) -> List[ReActStep]:
+    def run_planning_loop(self, user_goal: str, max_steps: int = 10):
+        """
+        Generator-based ReAct loop. Yields each Action (with Thought), expects observation via .send().
+        Terminates when the "finish" tool is chosen or max_steps is reached.
+        """
         history: List[ReActStep] = []
+        observation = None
         for i in range(max_steps):
             prompt = REACT_PROMPT_TEMPLATE.format(
                 user_goal=user_goal,
                 tools_json_schema=json.dumps(self.tools_schema, indent=2),
                 history="".join([
-                    f"Thought: {s.thought.reasoning}\nObservation: {s.observation}\n" for s in history
+                    f"Thought: {s.thought.reasoning}\nAction: {s.thought.next_action.tool_name}\nObservation: {s.observation}\n" for s in history
                 ])
             )
-            # Make the API call with tool-calling enabled
             response = self.model.generate_content(prompt, tools=self.tools_schema)
-            # Extract the function call from the response
             fc_part = response.candidates[0].content.parts[0]
             if not hasattr(fc_part, 'function_call') or fc_part.function_call is None:
                 raise ValueError("Planner Agent did not return a function call.")
             fc = fc_part.function_call
             # Parse the thought and action
             thought = Thought(
-                reasoning=f"Step {i+1}: Decided to call {fc.name}.",
-                criticism="Self-critique placeholder.",
-                next_action=Action(tool_name=fc.name, arguments=dict(fc.args))
+                reasoning=getattr(fc, 'thought', ''),  # adapt as needed
+                criticism=getattr(fc, 'criticism', ''),
+                next_action=Action(
+                    tool_name=fc.name,
+                    arguments=fc.args if hasattr(fc, 'args') else fc.parameters
+                )
             )
-            step = ReActStep(thought=thought)
-            history.append(step)
-            # If the agent decides to finish, break the loop
-            if step.thought.next_action.tool_name == "finish":
+            step = ReActStep(thought=thought, observation=observation)
+            # Yield the action for execution, expect observation via .send()
+            observation = yield step
+            history.append(ReActStep(thought=thought, observation=observation))
+            if thought.next_action.tool_name == "finish":
                 break
-            # NOTE: We are NOT executing the action here. We are just yielding it.
-            # The Orchestrator will execute it and feed the observation back in.
-            # For this PRP, we will just return the history of decisions.
-        return history
+        # Optionally yield the final step
+        return
