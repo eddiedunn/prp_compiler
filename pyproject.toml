@@ -11,6 +11,8 @@ dependencies = [
     "pydantic",
     "tiktoken",
     "langchain",
+    "langchain-community",
+    "langchain-google-genai",
     "langchain-openai",
     "chromadb",
     "semantic-version",
