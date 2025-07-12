@@ -31,18 +31,13 @@ class PlannerAgent(BaseAgent):
 
     def _create_tools_schema(self) -> List[Dict[str, Any]]:
         """Dynamically builds the tools schema from PrimitiveLoader action manifests for Gemini."""
-        gemini_tools = []
-        for action in self.primitive_loader.get_all('actions'):
-            gemini_tools.append({
-                "name": action['name'],
-                "description": action['description'],
-                "parameters": action.get('inputs_schema', {"type": "object", "properties": {}})
-            })
-
-        gemini_tools.append({
+        actions = self.primitive_loader.get_all('actions')
+        
+        # Add the static 'finish' action to the list of actions to be processed
+        actions.append({
             "name": "finish",
             "description": "Call this when you have gathered all necessary information to write the PRP.",
-            "parameters": {
+            "inputs_schema": {
                 "type": "object",
                 "properties": {
                     "schema_choice": {"type": "string", "description": "The name of the final output schema to use."},
@@ -51,6 +46,32 @@ class PlannerAgent(BaseAgent):
                 "required": ["schema_choice", "pattern_references"]
             }
         })
+
+        gemini_tools = []
+        for action in actions:
+            # Start with the base schema from the manifest
+            schema = action.get('inputs_schema', {'type': 'object', 'properties': {}})
+            
+            # Define the standard ReAct thought properties
+            thought_properties = {
+                "reasoning": {"type": "string", "description": "Your detailed reasoning for choosing this action. Explain why this specific tool is the best choice right now."},
+                "criticism": {"type": "string", "description": "A critique of your own reasoning and plan. What are the flaws in your current approach? What could go wrong?"}
+            }
+            
+            # Inject thought properties into the schema
+            schema['properties'].update(thought_properties)
+            
+            # Ensure 'reasoning' and 'criticism' are required
+            if 'required' not in schema:
+                schema['required'] = []
+            schema['required'].extend(["reasoning", "criticism"])
+
+            gemini_tools.append({
+                "name": action['name'],
+                "description": action['description'],
+                "parameters": schema
+            })
+
         return gemini_tools
 
     def run_planning_loop(self, user_goal: str, constitution: str, max_steps: int = 10) -> Generator[ReActStep, str, dict]:

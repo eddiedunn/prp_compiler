@@ -2,14 +2,12 @@ name: "list_directory"
 type: "action"
 version: "1.0.0"
 description: "Lists the contents of a directory, optionally recursively, to understand project structure."
-entrypoint: "list_directory.py:run"
+entrypoint: "template.md"
 inputs_schema:
   type: "object"
   properties:
     directory_path:
       type: "string"
       description: "The path to the directory to list."
-    recursive:
-      type: "boolean"
-      description: "Whether to list directories recursively."
-      default: false
+  required:
+    - directory_path
