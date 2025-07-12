@@ -77,46 +77,7 @@ class Orchestrator:
             return schema_template, "\n---\n".join(final_context_parts)
         raise RuntimeError("Planner failed to finish within max steps.")
 
-    def assemble_context(self, plan: ExecutionPlan) -> Tuple[str, str]:
-        """
-        Assembles the context from the execution plan by reading the full content
-        of all specified files, concatenating them, and resolving dynamic content.
 
-        Returns the schema template and the fully resolved context string.
-        """
-        # 1. Find and read the content of the chosen schema file.
-        if not plan.schema_choice or plan.schema_choice not in self.schemas_manifest:
-            raise ValueError(f"Schema '{plan.schema_choice}' not found in manifest.")
-        schema_item = self.schemas_manifest[plan.schema_choice]
-        schema_template = Path(schema_item.file_path).read_text()
-
-        context_parts = []
-
-        # 2. Iterate through the knowledge_plan and read file content.
-        for knowledge_name in plan.knowledge_plan:
-            if knowledge_name in self.knowledge_manifest:
-                knowledge_item = self.knowledge_manifest[knowledge_name]
-                context_parts.append(Path(knowledge_item.file_path).read_text())
-            else:
-                print(f"[WARNING] Knowledge '{knowledge_name}' not found in manifest.")
-
-        # 3. Iterate through the tool_plan and read file content.
-        for tool_plan_item in plan.tool_plan:
-            command_name = tool_plan_item.command_name
-            if command_name in self.tools_manifest:
-                tool_item = self.tools_manifest[command_name]
-                context_parts.append(Path(tool_item.file_path).read_text())
-            else:
-                print(f"[WARNING] Tool '{command_name}' not found in manifest.")
-
-        # 4. Concatenate all content into a single string.
-        assembled_context = "\n\n---\n\n".join(context_parts)
-
-        # 5. Resolve any dynamic content (e.g., !commands or @files) in the combined string.
-        resolved_context = self._resolve_dynamic_content(assembled_context)
-
-        # 6. Return the schema and the resolved context.
-        return schema_template, resolved_context
 
     def _resolve_callback(self, match: re.Match) -> str:
         """

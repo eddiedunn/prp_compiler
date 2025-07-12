@@ -9,8 +9,10 @@ REACT_PROMPT_TEMPLATE = """
 You are an expert AI engineering architect. Your goal is to gather all necessary information to create a comprehensive PRP for the user's goal.
 You operate in a loop of Thought -> Action -> Observation.
 
-1.  **Thought:** First, you think about the user's goal and your plan. You critique your own plan and decide what single action to take next.
-2.  **Action:** You choose one of the available tools to execute.
+1.  **Thought:** Think about the user's goal, your plan so far, and critique your own reasoning. Record both your reasoning and any self-criticism.
+2.  **Action:** Choose one of the available tools to execute. When you have enough information, call the "finish" tool.
+
+You MUST include your reasoning and criticism as fields in the arguments of every function call (including finish).
 
 You have access to the following tools:
 {tools_json_schema}
@@ -20,7 +22,7 @@ Your history of thoughts, actions, and observations so far:
 
 User's Goal: "{user_goal}"
 
-Based on your history, what is your next thought and action? If you have gathered enough information, your action should be to call the "finish" tool. Your output MUST be a single, valid JSON object that is a function call.
+Based on your history, what is your next thought and action? Respond with a single function call, with reasoning and criticism included in the arguments.
 """
 
 class PlannerAgent(BaseAgent):
@@ -40,9 +42,11 @@ class PlannerAgent(BaseAgent):
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": action.get('arguments', '')}
+                        "query": {"type": "string", "description": action.get('arguments', '')},
+                        "reasoning": {"type": "string", "description": "Your reasoning for choosing this action."},
+                        "criticism": {"type": "string", "description": "Self-criticism or uncertainty about this step."}
                     },
-                    "required": ["query"]
+                    "required": ["query", "reasoning", "criticism"]
                 }
             })
         # Add the mandatory finish tool
@@ -52,10 +56,12 @@ class PlannerAgent(BaseAgent):
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "reasoning": {"type": "string", "description": "Your final reasoning for why the context is complete."},
+                    "criticism": {"type": "string", "description": "Any final self-criticism or uncertainties."},
                     "schema_choice": {"type": "string", "description": "The name of the final output schema to use."},
                     "pattern_references": {"type": "array", "items": {"type": "string"}, "description": "List of pattern names to include as context."}
                 },
-                "required": ["schema_choice", "pattern_references"]
+                "required": ["reasoning", "criticism", "schema_choice", "pattern_references"]
             }
         })
         return gemini_tools
@@ -81,12 +87,18 @@ class PlannerAgent(BaseAgent):
                 raise ValueError("Planner Agent did not return a function call.")
             fc = fc_part.function_call
             # Parse the thought and action
+            # Parse reasoning and criticism from function call arguments
+            fc_args = fc.args if hasattr(fc, 'args') else fc.parameters
+            reasoning = fc_args.get('reasoning', '')
+            criticism = fc_args.get('criticism', '')
+            # Remove reasoning/criticism from arguments passed to the tool
+            action_args = {k: v for k, v in fc_args.items() if k not in ('reasoning', 'criticism')}
             thought = Thought(
-                reasoning=getattr(fc, 'thought', ''),  # adapt as needed
-                criticism=getattr(fc, 'criticism', ''),
+                reasoning=reasoning,
+                criticism=criticism,
                 next_action=Action(
                     tool_name=fc.name,
-                    arguments=fc.args if hasattr(fc, 'args') else fc.parameters
+                    arguments=action_args
                 )
             )
             step = ReActStep(thought=thought, observation=observation)

@@ -39,7 +39,35 @@ class DummyReActStep:
         self.thought = DummyThought(tool_name, arguments)
         self.observation = None
 
-def test_run_orchestrates_loop(monkeypatch):
+def test_orchestrator_run_loop(monkeypatch):
+    """Test Orchestrator.run executes the ReAct loop and assembles context from planner generator."""
+    loader = DummyPrimitiveLoader()
+    knowledge_store = DummyKnowledgeStore()
+    # Simulate: retrieve_knowledge step, then finish step
+    class DummyPlannerGen:
+        def __init__(self):
+            self.steps = [
+                DummyReActStep("retrieve_knowledge", {"query": "foo"}),
+                DummyReActStep("finish", {"schema_choice": "my_schema", "pattern_references": ["pat1"], "final_plan": "done"}),
+            ]
+            self.idx = 0
+        def __iter__(self):
+            return self
+        def __next__(self):
+            if self.idx >= len(self.steps):
+                raise StopIteration
+            step = self.steps[self.idx]
+            self.idx += 1
+            return step
+        def send(self, observation):
+            return self.__next__()
+    orchestrator = Orchestrator(loader, knowledge_store)
+    orchestrator.planner.run_planning_loop = lambda user_goal, max_steps=10: DummyPlannerGen()
+    schema, context = orchestrator.run("my user goal")
+    knowledge_store.retrieve.assert_called_with("foo")
+    assert schema["entrypoint"] == "schema.json"
+    assert context == "done"
+
     loader = DummyPrimitiveLoader()
     knowledge_store = DummyKnowledgeStore()
     # Sequence: retrieve_knowledge, then finish
@@ -162,7 +190,7 @@ def test_orchestrator_run_integration(monkeypatch):
     assert dummy_knowledge.last_query == "test query"
 
 
-def test_assemble_context_concatenates_content(orchestrator, temp_capabilities):
+
     """Tests that assemble_context reads and concatenates the full file contents."""
     plan = ExecutionPlan(
         tool_plan=[ToolPlanItem(command_name="test_tool", arguments="")],
@@ -191,7 +219,7 @@ def test_assemble_context_concatenates_content(orchestrator, temp_capabilities):
         assert "\n\n---\n\n" in resolved_context
 
 
-def test_assemble_context_handles_missing_items(orchestrator, capsys):
+
     """Tests that warnings are printed for items not found in manifests."""
     plan = ExecutionPlan(
         tool_plan=[ToolPlanItem(command_name="fake_tool", arguments="")],
@@ -206,7 +234,7 @@ def test_assemble_context_handles_missing_items(orchestrator, capsys):
     assert "[WARNING] Tool 'fake_tool' not found in manifest." in captured.out
 
 
-def test_assemble_context_schema_not_found(orchestrator):
+
     """Tests that a ValueError is raised if the schema is not found."""
     plan = ExecutionPlan(
         tool_plan=[], knowledge_plan=[], schema_choice="non_existent_schema"

@@ -49,8 +49,18 @@ def compile(
         raise typer.Exit(code=1)
 
 
+@app.command()
+def build_knowledge(
+    primitives_path: Path = typer.Option("agent_primitives", help="Path to the agent_primitives directory."),
+    vector_db_path: Path = typer.Option("chroma_db", help="Path to persist the vector database."),
+):
+    """Builds or rebuilds the RAG vector store from knowledge primitives."""
+    typer.echo(f"🔨 Building knowledge vector store from primitives in: {primitives_path}")
+    loader = PrimitiveLoader(primitives_path)
+    knowledge_primitives = loader.get_all("knowledge")
+    knowledge_store = KnowledgeStore(persist_directory=vector_db_path)
+    knowledge_store.build(knowledge_primitives)
+    typer.secho(f"✅ Knowledge vector store built at {vector_db_path}", fg=typer.colors.GREEN)
+
 if __name__ == "__main__":
     app()
-    print("   Context assembled.")
-
-    print("4.5. Counting tokens in assembled context...")
