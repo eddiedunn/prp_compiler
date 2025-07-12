@@ -21,34 +21,55 @@ def find_golden_cases():
 
 @pytest.mark.slow
 @pytest.mark.parametrize("name, goal_md, expected_json_path", find_golden_cases())
-@patch('src.prp_compiler.main.Orchestrator')
-@patch('src.prp_compiler.main.SynthesizerAgent')
-@patch('src.prp_compiler.main.configure_gemini')
-@patch('src.prp_compiler.main.KnowledgeStore')
-def test_golden_prp(mock_ks, mock_config, mock_synth, mock_orch, name, goal_md, expected_json_path, tmp_path):
+@patch("google.generativeai.GenerativeModel.generate_content")
+def test_golden_prp(
+    mock_generate_content,
+    name,
+    goal_md,
+    expected_json_path,
+    tmp_path,
+    temp_agent_dir,
+):
     # Arrange
     runner = CliRunner()
     output_file = tmp_path / "output.json"
     goal = goal_md.read_text()
-    
+
     with open(expected_json_path, "r") as f:
         expected_output = json.load(f)
 
-    # Mock the agents to return predictable output
-    mock_orchestrator_instance = mock_orch.return_value
-    mock_orchestrator_instance.run.return_value = ('{}', 'Final context')
+    # Mock the sequence of LLM calls.
+    # The first call is for the Planner, the second is for the Synthesizer.
+    # This is a simplified mock; a real test would have case-specific responses.
+    mock_planner_response_text = '```json\n{"tool_plan": [{"tool_name": "web_search", "arguments": {"query": "how to copy a file"}}], "knowledge_plan": [], "schema_choice": "prp_base/1.0.0"}\n```'
+    mock_synthesizer_response_text = json.dumps(expected_output)
 
-    mock_synthesizer_instance = mock_synth.return_value
-    mock_synthesizer_instance.synthesize.return_value = expected_output
+    # The mock will return these in order
+    mock_generate_content.side_effect = [
+        MagicMock(text=mock_planner_response_text),
+        MagicMock(text=mock_synthesizer_response_text),
+    ]
 
     # Act
-    result = runner.invoke(app, ["compile", goal, "--out", str(output_file)])
+    result = runner.invoke(
+        app,
+        [
+            "compile",
+            goal,
+            "--out",
+            str(output_file),
+            "--primitives-path",
+            str(temp_agent_dir["base"]),
+        ],
+    )
 
     # Assert
     assert result.exit_code == 0, f"CLI command failed for case '{name}': {result.stdout}"
     assert output_file.exists()
-    
-    with open(output_file, 'r') as f:
+
+    with open(output_file, "r") as f:
         generated_output = json.load(f)
 
-    assert generated_output == expected_output, f"Output mismatch for case '{name}'"
+    assert (
+        generated_output == expected_output
+    ), f"Output mismatch for case '{name}'"

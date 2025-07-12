@@ -37,52 +37,29 @@ def mock_knowledge_store():
     return ks
 
 
-@patch("importlib.import_module")
-def test_orchestrator_dynamic_action(
-    mock_import_module, mock_loader, mock_knowledge_store
-):
-    """Tests that the orchestrator dynamically imports and calls the action."""
+def test_execute_action_resolves_template(mock_loader, mock_knowledge_store):
+    """
+    Tests that execute_action correctly loads a template, substitutes arguments,
+    and returns the resolved content.
+    """
     # Arrange
-    mock_run_func = MagicMock(return_value="Action successful!")
-    mock_module = MagicMock()
-    mock_module.run = mock_run_func
-    mock_import_module.return_value = mock_module
+    action_name = "web_search"
+    template = "Perform a web search for: \"$ARGUMENTS[query]\""
+    mock_loader.get_primitive_content.return_value = template
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
 
-    # Redefine the mock planner to be a coroutine that waits for an observation
-    def mock_planning_loop(*args, **kwargs):
-        # The first `send` from the orchestrator is the initial observation
-        observation = yield
+    # Mock the internal dynamic content resolution to isolate the test
+    orchestrator._resolve_dynamic_content = MagicMock(side_effect=lambda x: x)
 
-        # Now, yield the first action step
-        action = Action(
-            tool_name="retrieve_knowledge", arguments={"query": "test query"}
-        )
-        step1 = ReActStep(
-            thought=Thought(reasoning="test", criticism="test", next_action=action)
-        )
-        observation = yield step1
-
-        # Yield the finish action
-        finish_action = Action(
-            tool_name="finish",
-            arguments={"schema_choice": "my_schema", "pattern_references": []},
-        )
-        step2 = ReActStep(
-            thought=Thought(
-                reasoning="done", criticism="none", next_action=finish_action
-            )
-        )
-        yield step2
-
-    orchestrator.planner.run_planning_loop = mock_planning_loop
+    action = Action(tool_name=action_name, arguments={"query": "agentic systems"})
 
     # Act
-    schema, context = orchestrator.run("test goal", "")
+    result = orchestrator.execute_action(action)
 
     # Assert
-    # Check that the mock function was called
-    mock_knowledge_store.retrieve.assert_called_once_with(query="test query")
-    # Check that the observation from the mock call is in the context
-    assert "Observation: ['Retrieved knowledge chunk.']" in context
+    mock_loader.get_primitive_content.assert_called_once_with("actions", action_name)
+    orchestrator._resolve_dynamic_content.assert_called_once_with(
+        'Perform a web search for: "agentic systems"'
+    )
+    assert result == 'Perform a web search for: "agentic systems"'

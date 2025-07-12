@@ -32,71 +32,28 @@ class Orchestrator:
         self.planner = PlannerAgent(self.primitive_loader)
 
     def execute_action(self, action: Action) -> str:
-        """Dynamically loads and executes an action based on the primitive manifest."""
+        """
+        Loads an action's template, fills its arguments, and resolves dynamic content.
+        """
         try:
-            try:
-                # Try to fetch manifest from primitives dict
-                action_primitive = (
-                    self.primitive_loader.primitives.get("actions", {})
-                    .get(action.tool_name)
+            # 1. Get the raw template content from the loader
+            raw_template = self.primitive_loader.get_primitive_content(
+                "actions", action.tool_name
+            )
+
+            # 2. Substitute arguments into the template (simple string replacement)
+            # A more robust solution might use a proper templating engine
+            context_with_args = raw_template
+            for key, value in action.arguments.items():
+                context_with_args = context_with_args.replace(
+                    f"$ARGUMENTS[{key}]", str(value)
                 )
 
-                if not action_primitive:
-                    return (
-                        f"[ERROR] Action '{action.tool_name}' not found in manifest."
-                    )
-                entrypoint = action_primitive["entrypoint"]
-            except Exception as e:
-                return (
-                    f"[ERROR] Could not fetch action primitive for "
-                    f"'{action.tool_name}': {e}"
-                )
-            parts = entrypoint.split(":")
-            module_path = parts[0]
-
-            action_function = None
-
-            # Case 1: Entrypoint is a method on a class (e.g.,
-            # 'module:ClassName:method_name'). This is a simplification.
-            # A real implementation would need a more robust way to map
-            # class names to the correct instance.
-            if len(parts) == 3:
-                class_name, method_name = parts[1], parts[2]
-                if class_name == "KnowledgeStore":
-                    instance = self.knowledge_store
-                    action_function = getattr(instance, method_name)
-                else:
-                    # If other classes with actions are added, they need
-                    # to be handled here.
-                    return (
-                        f"[ERROR] Unknown class '{class_name}' in entrypoint "
-                        "for action '{action.tool_name}'. "
-                        "This error indicates that the class is not properly "
-                        "handled in this code. "
-                        "Please add a handler for this class."
-                    )
-
-            # Case 2: Entrypoint is a standalone function (e.g., 'module:function_name')
-            elif len(parts) == 2:
-                function_name = parts[1]
-                action_module = importlib.import_module(module_path)
-                action_function = getattr(action_module, function_name)
-
-            else:
-                return (
-                    f"[ERROR] Invalid entrypoint format for action "
-                    f"'{action.tool_name}'."
-                )
-
-            if not action_function:
-                return (
-                    f"[ERROR] Could not resolve action function for "
-                    f"'{action.tool_name}'."
-                )
-
-            # Execute the action
-            result = action_function(**action.arguments)
-            return str(result)
+            # 3. Resolve dynamic content like ! and @
+            resolved_content = self._resolve_dynamic_content(context_with_args)
+            return resolved_content
+        except Exception as e:
+            return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
         except (ImportError, AttributeError, TypeError, Exception) as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
