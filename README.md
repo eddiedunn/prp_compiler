@@ -21,15 +21,13 @@ To install the project and its dependencies, run the following command from the 
 uv pip install -e .
 ```
 
-This installs the package in editable mode, meaning any changes to the source code will be immediately available to the command-line interface.
 
 ## Configuration
 
-To use the agentic capabilities of this tool, you need a Google Gemini API key.
+The compiler requires a Google Gemini API key to function.
 
-1.  Create a file named `.env` in the root of the project directory.
-2.  Add your API key to the file like this:
-
+1.  Create a file named `.env` in the project root.
+2.  Add your API key to the file:
     ```
     GEMINI_API_KEY="your_api_key_here"
     ```
