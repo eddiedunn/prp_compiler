@@ -56,13 +56,12 @@ def compare_prp_json(generated, expected):
         else:
             if expected[key] != generated[key]:
                 raise AssertionError(f"Mismatch in '{key}':\nExpected: {expected[key]}\nGenerated: {generated[key]}")
-    # Optionally, ensure no unexpected extra keys
-    # assert set(generated.keys()) == set(expected.keys())
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
-
 golden_cases = find_golden_cases(GOLDEN_DIR)
 
+@pytest.mark.slow  # Mark golden tests as slow
+@pytest.mark.skipif(not golden_cases, reason="No golden cases found")
 @pytest.mark.parametrize("goal_md,expected_json", golden_cases)
 def test_golden_prp(goal_md, expected_json):
     with open(expected_json, "r") as f:

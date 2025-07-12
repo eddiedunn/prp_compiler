@@ -1,4 +1,277 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+import pytest
+import os
+import stat
+import tempfile
+import shlex
+import subprocess
+
+from src.prp_compiler.orchestrator import Orchestrator
+from src.prp_compiler.models import ManifestItem, ReActStep, Thought, Action
+
+class DummyPrimitiveLoader:
+    def __init__(self):
+        self.primitives = {
+            "schemas": {
+                "my_schema": {"content": '{"entrypoint": "schema.json"}'},
+            },
+            "patterns": {
+                "pat1": {"content": "pattern content"},
+            },
+            "actions": {
+                "retrieve_knowledge": {"name": "retrieve_knowledge", "description": "some tool", "inputs_schema": {}},
+            }
+        }
+
+    def get_all(self, kind):
+        return list(self.primitives.get(kind, {}).values())
+
+class DummyKnowledgeStore:
+    def __init__(self):
+        self.retrieve = MagicMock(return_value=["doc1", "doc2"])
+
+class DummyPlanner:
+    def __init__(self, steps):
+        self.steps = steps
+        self.idx = 0
+    def run_planning_step(self, user_goal, history):
+        step = self.steps[self.idx]
+        self.idx += 1
+        return step
+
+def test_orchestrator_run_loop(monkeypatch):
+    """Test Orchestrator.run executes the ReAct loop and assembles context from planner generator."""
+    loader = DummyPrimitiveLoader()
+    knowledge_store = DummyKnowledgeStore()
+
+    # Simulate: retrieve_knowledge step, then finish step
+    class DummyPlannerGen:
+        def __init__(self):
+            retrieve_action = Action(tool_name="retrieve_knowledge", arguments={"query": "foo"})
+            finish_action = Action(tool_name="finish", arguments={"schema_choice": "my_schema", "pattern_references": ["pat1"]})
+            self.steps = [
+                ReActStep(thought=Thought(reasoning="r1", criticism="c1", next_action=retrieve_action)),
+                ReActStep(thought=Thought(reasoning="r2", criticism="c2", next_action=finish_action)),
+            ]
+            self.idx = 0
+        def __iter__(self):
+            return self
+        def __next__(self):
+            if self.idx >= len(self.steps):
+                raise StopIteration
+            step = self.steps[self.idx]
+            self.idx += 1
+            return step
+        def send(self, observation):
+            # This generator mock simply proceeds to the next step, ignoring observation
+            return self.__next__()
+
+    orchestrator = Orchestrator(loader, knowledge_store)
+    orchestrator.planner.run_planning_loop = lambda user_goal, max_steps=10: DummyPlannerGen()
+
+    schema_str, context = orchestrator.run("my user goal")
+
+    knowledge_store.retrieve.assert_called_with("foo")
+
+    import json
+    schema = json.loads(schema_str)
+    assert schema["entrypoint"] == "schema.json"
+    assert "Retrieved 2 knowledge chunks" in context
+    assert "pattern content" in context
+
+
+@pytest.fixture
+def temp_capabilities(tmp_path):
+    """Creates a temporary agent_capabilities directory with dummy files."""
+    base_path = tmp_path / "agent_capabilities"
+
+    schemas_path = base_path / "schemas"
+    knowledge_path = base_path / "knowledge"
+    tools_path = base_path / "tools"
+    schemas_path.mkdir(parents=True)
+    knowledge_path.mkdir(parents=True)
+    tools_path.mkdir(parents=True)
+
+    schema_file = schemas_path / "test_schema.md"
+    schema_file.write_text("This is the schema template.")
+
+    knowledge_file = knowledge_path / "test_knowledge.md"
+    knowledge_file.write_text("This is the knowledge content.")
+
+    tool_file = tools_path / "test_tool.md"
+    tool_file.write_text("This is the tool content.\n!echo 'dynamic part'")
+
+    return {"schema": schema_file, "knowledge": knowledge_file, "tool": tool_file}
+
+
+@pytest.fixture
+def sample_manifests(temp_capabilities):
+    """Provides sample manifest data pointing to temporary files."""
+    tools = [
+        ManifestItem(
+            name="test_tool",
+            description="A test tool",
+            file_path=str(temp_capabilities["tool"]),
+        )
+    ]
+    knowledge = [
+        ManifestItem(
+            name="test_knowledge",
+            description="A knowledge doc",
+            file_path=str(temp_capabilities["knowledge"]),
+        )
+    ]
+    schemas = [
+        ManifestItem(
+            name="test_schema",
+            description="A schema",
+            file_path=str(temp_capabilities["schema"]),
+        )
+    ]
+    return tools, knowledge, schemas
+
+
+@pytest.fixture
+def orchestrator(sample_manifests):
+    """Provides an Orchestrator instance initialized with sample manifests."""
+    tools, knowledge, schemas = sample_manifests
+    # Initialize in legacy mode for these specific tests
+    return Orchestrator(tools, knowledge, schemas)
+
+
+def test_orchestrator_run_integration(monkeypatch):
+    """
+    Integration test for Orchestrator.run with mocked PlannerAgent and KnowledgeStore.
+    """
+    # Dummy primitive loader with minimal structure
+    class DummyPrimitiveLoader:
+        def __init__(self):
+            self.primitives = {
+                'schemas': {
+                    'standard_prp': {'content': 'SCHEMA_CONTENT'}
+                },
+                'patterns': {
+                    'pattern1': {'content': 'PATTERN_CONTENT'}
+                },
+                'actions': {}
+            }
+        def get_all(self, kind):
+            return list(self.primitives.get(kind, {}).values())
+
+
+    # Mock PlannerAgent to return a generator yielding two steps
+    class DummyPlanner:
+        def run_planning_loop(self, user_goal, max_steps=10):
+            retrieve_action = Action(tool_name="retrieve_knowledge", arguments={"query": "test query"})
+            finish_action = Action(tool_name="finish", arguments={"schema_choice": "standard_prp", "pattern_references": ["pattern1"]})
+            
+            step1 = ReActStep(thought=Thought(reasoning="r1", criticism="c1", next_action=retrieve_action))
+            yield step1
+            
+            step2 = ReActStep(thought=Thought(reasoning="r2", criticism="c2", next_action=finish_action))
+            yield step2
+
+
+    # Mock KnowledgeStore
+    class DummyKnowledgeStore:
+        def __init__(self):
+            self.last_query = None
+        def retrieve(self, query):
+            self.last_query = query
+            return ["MOCK_KNOWLEDGE"]
+
+    dummy_loader = DummyPrimitiveLoader()
+    dummy_knowledge = DummyKnowledgeStore()
+    orchestrator = Orchestrator(dummy_loader, dummy_knowledge)
+    orchestrator.planner = DummyPlanner()  # Inject mock planner
+
+    user_goal = "Write a PRP for X"
+    schema, context = orchestrator.run(user_goal)
+    assert schema == 'SCHEMA_CONTENT'
+    assert 'MOCK_KNOWLEDGE' in context
+    assert 'PATTERN_CONTENT' in context
+    assert dummy_knowledge.last_query == "test query"
+
+
+def test_resolve_dynamic_content_command_failure(orchestrator):
+    """Test that a failed shell command returns an error message."""
+    # Use an allowed command that will fail.
+    command = "ls /this/path/should/not/exist"
+    raw_context = f"!{command}"
+    result = orchestrator._resolve_dynamic_content(raw_context)
+    assert f"ERROR: Command '{command}' failed" in result
+
+
+def test_resolve_dynamic_content_file_not_found(orchestrator):
+    """Test that a missing file reference returns an error message."""
+    raw_context = "@ /tmp/this_file_should_not_exist_12345.txt"
+    with patch('pathlib.Path.is_file', return_value=False):
+        result = orchestrator._resolve_dynamic_content(raw_context)
+        assert (
+            result
+            == "[ERROR: File not found at '/tmp/this_file_should_not_exist_12345.txt']"
+        )
+
+
+def test_resolve_dynamic_content_file_read_error(orchestrator):
+    """Test that an unreadable file returns an error message."""
+    # Create a temporary file
+    fd, file_path = tempfile.mkstemp()
+    os.close(fd)
+
+    # Remove read permissions
+    os.chmod(file_path, stat.S_IWUSR)
+    try:
+        raw_context = f"@ {file_path}"
+        result = orchestrator._resolve_dynamic_content(raw_context)
+        assert f"ERROR: Could not read file at '{file_path}':" in result
+    finally:
+        # Restore permissions to allow deletion
+        os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)
+        os.unlink(file_path)
+
+
+def test_resolve_dynamic_content_with_quoted_arguments(orchestrator):
+    """Test that shell commands with spaces and quotes are handled correctly."""
+    raw_context = '!git commit -m "feat: a test message"'
+    expected_command = ["git", "commit", "-m", "feat: a test message"]
+
+    with patch("subprocess.run") as mock_subprocess_run:
+        mock_subprocess_run.return_value.stdout = "Success"
+        orchestrator._resolve_dynamic_content(raw_context)
+        # Assert that subprocess.run was called with the correctly parsed list
+        mock_subprocess_run.assert_called_with(
+            expected_command,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+
+
+def test_resolve_dynamic_content_disallowed_command(orchestrator):
+    """Test that a disallowed shell command is blocked."""
+    raw_context = "!rm -rf /"
+    result = orchestrator._resolve_dynamic_content(raw_context)
+    assert "[ERROR: Command 'rm' is not in the allowlist.]" in result
+
+
+def test_resolve_dynamic_content_allowed_command(orchestrator):
+    """Test that an allowed shell command is executed."""
+    raw_context = "!echo 'hello'"
+    with patch("subprocess.run") as mock_subprocess_run:
+        mock_subprocess_run.return_value.stdout = "hello"
+        result = orchestrator._resolve_dynamic_content(raw_context)
+        assert result == "hello"
+        mock_subprocess_run.assert_called_once()
+
+
+def test_resolve_dynamic_content_empty_command(orchestrator):
+    """Test that an empty command string is handled."""
+    raw_context = "! "
+    result = orchestrator._resolve_dynamic_content(raw_context)
+    assert "[ERROR: Command '' is not in the allowlist.]" in result
+
 import pytest
 from src.prp_compiler.orchestrator import Orchestrator
 

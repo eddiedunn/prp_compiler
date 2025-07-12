@@ -46,7 +46,8 @@ def test_cli_compile_command(mock_orchestrator, mock_synthesizer):
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = Path(tmpdir) / "test.json"
         result = runner.invoke(app, ["compile", "test-goal", "--out", str(output_file)])
-        assert result.exit_code == 0
+        
+        assert result.exit_code == 0, f"CLI command failed with output: {result.stdout}"
         assert output_file.exists()
         with open(output_file) as f:
             data = json.load(f)

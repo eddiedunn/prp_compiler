@@ -28,25 +28,22 @@ def make_mock_gemini_response(tool_name, args):
     fc = FunctionCall(tool_name, args)
     return MagicMock(candidates=[Candidate([Part(fc)])])
 
-def test_run_planning_step_calls_finish(monkeypatch):
+def test_run_planning_loop_calls_finish(monkeypatch):
     loader = DummyPrimitiveLoader()
     planner = PlannerAgent(loader)
-    # Patch planner.model.generate_content to simulate Gemini
     calls = []
     def fake_generate_content(prompt):
         calls.append(prompt)
-        if len(calls) == 1:
-            return make_mock_gemini_response("retrieve_knowledge", {"query": "foo"})
-        else:
-            return make_mock_gemini_response("finish", {"schema_choice": "final_schema", "pattern_references": ["pat1"], "final_plan": "done"})
-    monkeypatch.setattr(planner.model, "generate_content", fake_generate_content)
-    history = []
-    # Step 1: retrieve_knowledge
-    step1 = planner.run_planning_step("my goal", history)
-    assert step1.thought.next_action.tool_name == "retrieve_knowledge"
-    history.append(step1)
-    # Step 2: finish
-    step2 = planner.run_planning_step("my goal", history)
-    assert step2.thought.next_action.tool_name == "finish"
-    # Check that observation from step1 is present in prompt for step2
-    assert "Observation:" in calls[1]
+        return make_mock_gemini_response('retrieve_knowledge', {"query": "What is the meaning of life?"})
+    with patch.object(planner.model, 'generate_content', fake_generate_content):
+        planner_gen = planner.run_planning_loop("test goal", max_steps=2)
+        steps = list(planner_gen)
+        assert len(steps) == 2
+        assert steps[0].thought.next_action.tool_name == "retrieve_knowledge"
+        assert steps[1].thought.next_action.tool_name == "finish"
+        # Check that history was passed to the second call
+        assert any("Observation: got some data" in call for call in calls)
+        # The generator should stop after the 'finish' action
+        with pytest.raises(StopIteration):
+            next(planner_gen)
+        assert any("Observation:" in call for call in calls)
