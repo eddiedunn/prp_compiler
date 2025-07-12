@@ -1,0 +1,5 @@
+name: "prd_spec_schema"
+type: "schema"
+version: "1.0.0"
+description: "A schema for specifying detailed feature requirements and acceptance criteria."
+entrypoint: "schema.md"

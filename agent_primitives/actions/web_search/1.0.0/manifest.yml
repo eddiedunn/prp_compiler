@@ -1,0 +1,10 @@
+name: "web_search"
+type: "action"
+version: "1.0.0"
+description: "Performs a web search to find documentation or examples for a given technical topic."
+entrypoint: "web_search.py:run"
+inputs_schema:
+  type: "object"
+  properties:
+    query: { "type": "string", "description": "The search query." }
+  required: ["query"]
