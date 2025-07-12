@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "An agentic system for compiling high-fidelity PRPs."
 requires-python = ">=3.9"
 dependencies = [
+    "typer",
     "google-generativeai",
     "python-dotenv",
     "PyYAML",
@@ -12,7 +13,7 @@ dependencies = [
     "langchain",
     "langchain-openai",
     "chromadb",
-    "semantic-version",
+    "semantic-version"
 ]
 
 [project.scripts]

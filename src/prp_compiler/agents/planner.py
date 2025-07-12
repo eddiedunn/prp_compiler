@@ -20,7 +20,7 @@ Your history of thoughts, actions, and observations so far:
 
 User's Goal: "{user_goal}"
 
-Based on your history, what is your next thought and action? If you have gathered enough information, your action should be to call the "finish" tool.
+Based on your history, what is your next thought and action? If you have gathered enough information, your action should be to call the "finish" tool. Your output MUST be a single, valid JSON object that is a function call.
 """
 
 class PlannerAgent(BaseAgent):
@@ -31,25 +31,34 @@ class PlannerAgent(BaseAgent):
         self.tools_schema = self._create_tools_schema()
 
     def _create_tools_schema(self) -> List[Dict[str, Any]]:
-        # Logic to convert your action manifests into the OpenAPI schema Gemini expects.
-        # For now, we can hardcode a few for the purpose of this implementation.
-        return [
-            {
-                "name": "retrieve_knowledge",
-                "description": "Retrieve chunks of curated knowledge documents relevant to a query.",
-                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
-            },
-            {
-                "name": "web_search",
-                "description": "Performs a web search.",
-                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
-            },
-            {
-                "name": "finish",
-                "description": "Call this when you have gathered all necessary information and are ready to finalize the PRP.",
-                "parameters": {"type": "object", "properties": {"schema_choice": {"type": "string"}, "pattern_references": {"type": "array", "items": {"type": "string"}}}}
+        # Dynamically build the tools schema from PrimitiveLoader action manifests
+        gemini_tools = []
+        for action in self.primitive_loader.get_all('actions'):
+            gemini_tools.append({
+                "name": action['name'],
+                "description": action['description'],
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": action.get('arguments', '')}
+                    },
+                    "required": ["query"]
+                }
+            })
+        # Add the mandatory finish tool
+        gemini_tools.append({
+            "name": "finish",
+            "description": "Call this when you have gathered all necessary information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "schema_choice": {"type": "string", "description": "The name of the final output schema to use."},
+                    "pattern_references": {"type": "array", "items": {"type": "string"}, "description": "List of pattern names to include as context."}
+                },
+                "required": ["schema_choice", "pattern_references"]
             }
-        ]
+        })
+        return gemini_tools
 
     def run_planning_loop(self, user_goal: str, max_steps: int = 10) -> List[ReActStep]:
         history: List[ReActStep] = []
@@ -64,17 +73,20 @@ class PlannerAgent(BaseAgent):
             # Make the API call with tool-calling enabled
             response = self.model.generate_content(prompt, tools=self.tools_schema)
             # Extract the function call from the response
-            fc = response.candidates[0].content.parts[0].function_call
+            fc_part = response.candidates[0].content.parts[0]
+            if not hasattr(fc_part, 'function_call') or fc_part.function_call is None:
+                raise ValueError("Planner Agent did not return a function call.")
+            fc = fc_part.function_call
             # Parse the thought and action
             thought = Thought(
-                reasoning=f"Step {i+1}",
-                criticism="N/A",
+                reasoning=f"Step {i+1}: Decided to call {fc.name}.",
+                criticism="Self-critique placeholder.",
                 next_action=Action(tool_name=fc.name, arguments=dict(fc.args))
             )
             step = ReActStep(thought=thought)
             history.append(step)
             # If the agent decides to finish, break the loop
-            if step.thought.next_action is not None and step.thought.next_action.tool_name == "finish":
+            if step.thought.next_action.tool_name == "finish":
                 break
             # NOTE: We are NOT executing the action here. We are just yielding it.
             # The Orchestrator will execute it and feed the observation back in.

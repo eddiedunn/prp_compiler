@@ -4,7 +4,16 @@ from src.prp_compiler.agents.planner import PlannerAgent
 from src.prp_compiler.models import ManifestItem
 
 class DummyPrimitiveLoader:
-    pass
+    def get_all(self, kind):
+        if kind == 'actions':
+            return [
+                {
+                    "name": "retrieve_knowledge",
+                    "description": "Retrieve knowledge",
+                    "arguments": "A query string"
+                }
+            ]
+        return []
 
 @pytest.fixture
 def planner_agent():

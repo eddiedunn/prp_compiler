@@ -1,39 +1,49 @@
+import json
+from jsonschema import validate, ValidationError
 from .base_agent import BaseAgent
 
 SYNTHESIZER_PROMPT_TEMPLATE = """
-You are an expert prompt engineer. Your task is to generate a complete and detailed Product Requirement Prompt (PRP) in **Markdown format**.
+You are an expert prompt engineer. Your task is to generate a complete and detailed Product Requirement Prompt (PRP) as a single, valid JSON object that strictly conforms to the provided JSON schema. Do not output any text or explanation outside of the JSON object itself.
 
-**Instructions:**
-1.  Use the `Schema Template` below as the structural blueprint for the final document.
-2.  Read the `Assembled Context` which contains information from various sources.
-3.  Carefully fill in each section of the schema using the information provided in the context.
-4.  Replace all placeholder text (e.g., "[Placeholder for...]") with specific, relevant details derived from the context and the user's goal.
-5.  The final output must be a single, coherent Markdown document, ready for a development team. Do not output JSON or any other format.
-
-**Schema Template:**
----
-{schema_template}
----
+**JSON Schema to follow:**
+{json_schema}
 
 **Assembled Context:**
----
 {context}
----
 
-Now, generate the final PRP as a complete Markdown document.
+Now, generate the JSON object for the PRP.
 """
 
-
 class SynthesizerAgent(BaseAgent):
-    """Agent responsible for synthesizing the final PRP."""
+    def synthesize(self, schema: dict, context: str, constitution: str, max_retries: int = 2) -> dict:
+        """Generates the final PRP JSON, validating it against the schema and retrying if necessary."""
+        prompt = constitution + "\n\n" + SYNTHESIZER_PROMPT_TEMPLATE.format(json_schema=json.dumps(schema, indent=2), context=context)
+        for attempt in range(max_retries):
+            response = self.model.generate_content(prompt)
+            cleaned_response_text = self._clean_json_response(response.text)
+            try:
+                generated_json = json.loads(cleaned_response_text)
+                validate(instance=generated_json, schema=schema)
+                print(f"Synthesizer output validated successfully on attempt {attempt + 1}.")
+                return generated_json
+            except (json.JSONDecodeError, ValidationError) as e:
+                print(f"[Warning] Synthesizer output validation failed on attempt {attempt + 1}: {e}")
+                prompt += f"\n\nPREVIOUS ATTEMPT FAILED. DO NOT REPEAT THE MISTAKE. Error: {e}. Raw Response: {cleaned_response_text}. Please correct the JSON output to strictly conform to the schema."
+        raise RuntimeError("Synthesizer failed to produce a valid PRP JSON after multiple attempts.")
 
-    def synthesize(self, schema_template: str, context: str, constitution: str) -> str:
-        """
-        Generates the final PRP by calling the LLM with the schema and context.
-        """
-        prompt = constitution + "\n\n" + SYNTHESIZER_PROMPT_TEMPLATE.format(
-            schema_template=schema_template, context=context
-        )
-
-        response = self.model.generate_content(prompt)
-        return response.text
+    def _clean_json_response(self, text: str) -> str:
+        """Attempts to extract a JSON object from the model's response text."""
+        # Remove leading/trailing whitespace and markdown fencing if present
+        text = text.strip()
+        if text.startswith('```json'):
+            text = text[len('```json'):]
+        if text.startswith('```'):
+            text = text[len('```'):]
+        if text.endswith('```'):
+            text = text[:-3]
+        # Try to find the first and last curly braces
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1:
+            return text[start:end+1]
+        return text

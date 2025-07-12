@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PRPOutput",
+  "type": "object",
+  "properties": {
+    "goal": {"type": "string", "description": "The high-level goal of the PRP."},
+    "why": {"type": "string", "description": "The justification and business value."},
+    "what": {"type": "object", "description": "The technical requirements and success criteria."},
+    "context": {"type": "object", "description": "All assembled context, including documentation references and code patterns."},
+    "implementation_blueprint": {"type": "object", "description": "The step-by-step implementation plan."},
+    "validation_loop": {"type": "object", "description": "The validation gates for the agent to use."}
+  },
+  "required": ["goal", "why", "what", "context", "implementation_blueprint", "validation_loop"]
+}

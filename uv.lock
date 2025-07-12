@@ -1901,6 +1901,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "semantic-version" },
     { name = "tiktoken" },
+    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -1927,6 +1928,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "semantic-version" },
     { name = "tiktoken" },
+    { name = "typer" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]
