@@ -1,7 +1,9 @@
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
 from langchain.text_splitter import MarkdownHeaderTextSplitter
+from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
@@ -14,8 +16,15 @@ class KnowledgeStore:
 
     def __init__(self, persist_directory: Path):
         self.persist_directory = persist_directory
-        # WHY: We use Google's embedding model for consistency with the main LLM.
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        # WHY: Use mock embeddings for local development to avoid credential issues.
+        if os.environ.get("USE_MOCK_EMBEDDINGS") == "true":
+            print("Using mock embeddings for knowledge store.")
+            # The size should match the expected dimension of the real model if possible.
+            # For testing purposes, 768 is a common size.
+            self.embeddings = FakeEmbeddings(size=768)
+        else:
+            # WHY: We use Google's embedding model for consistency with the main LLM.
+            self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.db: Chroma | None = None
 
     def build(self, knowledge_primitives: List[Dict[str, Any]]):

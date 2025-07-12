@@ -41,13 +41,13 @@ class Orchestrator:
                 "actions", action.tool_name
             )
 
-            # 2. Substitute arguments into the template (simple string replacement)
-            # A more robust solution might use a proper templating engine
-            context_with_args = raw_template
-            for key, value in action.arguments.items():
-                context_with_args = context_with_args.replace(
-                    f"$ARGUMENTS({key})", str(value)
-                )
+            # 2. Substitute arguments using a regex to handle complex templates.
+            def replacer(match):
+                key = match.group(1)
+                return str(action.arguments.get(key, f"[ERROR: Missing argument '{key}']"))
+
+            # This pattern finds all instances of $ARGUMENTS(key)
+            context_with_args = re.sub(r"\$ARGUMENTS\((.*?)\)", replacer, raw_template)
 
             # 3. Resolve dynamic content like ! and @
             resolved_content = self._resolve_dynamic_content(context_with_args)
@@ -64,11 +64,13 @@ class Orchestrator:
         final_plan_args = None
         observation = "No observation yet. Start by thinking about the user's goal."
 
-        next(planner_gen)  # Prime the generator to its first yield.
-
+        step = None
         while True:
             try:
-                step = planner_gen.send(observation)
+                # The first call to send() must be None.
+                # Subsequent calls send the observation.
+                current_observation = observation if step else None
+                step = planner_gen.send(current_observation)
 
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"
@@ -118,7 +120,9 @@ class Orchestrator:
             )
 
         final_context = "\n\n".join(final_context_parts)
-        return (schema_content, final_context)
+        # Return the schema *name* and the assembled context.
+        # The Synthesizer will use the name to load the schema itself.
+        return (schema_choice, final_context)
 
         return (
             "",

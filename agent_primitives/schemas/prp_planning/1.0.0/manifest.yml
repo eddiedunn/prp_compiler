@@ -1,5 +1,5 @@
-name: "prd_planning_schema"
+name: "prp_planning_schema"
 type: "schema"
 version: "1.0.0"
-description: "A schema for generating comprehensive Product Requirements Documents (PRDs) with visual diagrams and research."
-entrypoint: "schema.md"
+description: "A schema for generating a structured project plan, outlining key phases, tasks, and milestones."
+entrypoint: "schema.json"

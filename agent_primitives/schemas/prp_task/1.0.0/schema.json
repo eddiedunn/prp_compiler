@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PRP Task Definition",
+  "description": "Defines a single, executable task with specific inputs, outputs, and execution commands.",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "description": "A unique identifier for the task.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A brief description of what the task accomplishes.",
+      "type": "string"
+    },
+    "command": {
+      "description": "The command or action to be executed.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the command, e.g., 'bash' or 'python'.",
+          "type": "string"
+        },
+        "script": {
+          "description": "The script or command line to execute.",
+          "type": "string"
+        }
+      },
+      "required": ["name", "script"]
+    },
+    "inputs": {
+      "description": "A list of required input files or parameters.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "outputs": {
+      "description": "A list of expected output files or artifacts.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["name"]
+      }
+    }
+  },
+  "required": ["task_id", "description", "command"]
+}

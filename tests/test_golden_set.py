@@ -2,7 +2,7 @@ import pytest
 import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from src.prp_compiler.main import app
+from src.prp_compiler.main import app, compile
 from typer.testing import CliRunner
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
@@ -42,56 +42,72 @@ def mock_primitive_loader():
 
 @pytest.mark.slow
 @pytest.mark.parametrize("name, goal_md, expected_json_path", find_golden_cases())
-@patch("src.prp_compiler.main.PrimitiveLoader") # Patch where it's instantiated
-@patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel") # Patch where it's used
+@patch("src.prp_compiler.main.configure_gemini")
+@patch("src.prp_compiler.main.KnowledgeStore")
+@patch("src.prp_compiler.main.PrimitiveLoader")
+@patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel")
 def test_golden_prp(
     mock_generative_model,
     mock_loader_class,
+    mock_knowledge_store_class,
+    mock_configure_gemini,
     name,
     goal_md,
     expected_json_path,
     tmp_path,
     temp_agent_dir,
-    mock_primitive_loader, # Use the fixture
 ):
+    """
+    Tests the full PRP compilation process by directly calling the 'compile' function.
+    This avoids issues with CliRunner and ensures mocks are applied correctly.
+    """
     # Arrange
-    mock_loader_class.return_value = mock_primitive_loader
-    runner = CliRunner()
+    # 1. Mock loaders and configurations
+    mock_loader_instance = mock_loader_class.return_value
+    # Mock the schema loader to return a valid, simple schema
+    mock_loader_instance.get_schema.return_value = json.dumps({"type": "object"})
+    mock_knowledge_store_instance = mock_knowledge_store_class.return_value
+
+    # 2. Set up paths and read test case data
     output_file = tmp_path / "output.json"
     goal = goal_md.read_text()
-
     with open(expected_json_path, "r") as f:
         expected_output = json.load(f)
 
-    # Mock the sequence of LLM calls.
-    mock_planner_response = make_mock_planner_response(
-        "finish",
-        {"schema_choice": "base_feature_prp", "pattern_references": []},
+    # 3. Mock the sequence of LLM calls for the ReAct loop
+    mock_planner_step1 = make_mock_planner_response(
+        "retrieve_knowledge", {"query": "how to copy a file"}
+    )
+    mock_planner_step2 = make_mock_planner_response(
+        "finish", {"schema_choice": "prp_base_schema", "pattern_references": []}
     )
     mock_synthesizer_response = MagicMock(text=json.dumps(expected_output))
 
-    # Configure the mock instance that will be created in the agent's __init__
-    mock_instance = mock_generative_model.return_value
-    mock_instance.generate_content.side_effect = [
-        mock_planner_response,
+    mock_llm_instance = mock_generative_model.return_value
+    mock_llm_instance.generate_content.side_effect = [
+        mock_planner_step1,
+        mock_planner_step2,
         mock_synthesizer_response,
     ]
 
     # Act
-    result = runner.invoke(
-        app,
-        [
-            "compile",
-            goal,
-            "--out",
-            str(output_file),
-            "--primitives-path",
-            str(temp_agent_dir["base"]),
-        ],
-    )
+    # Directly call the compile function instead of using CliRunner
+    try:
+        compile(
+            goal=goal,
+            output_file=output_file,
+            primitives_path=temp_agent_dir["base"],
+            vector_db_path=Path(tmp_path / "chroma_db"),
+            constitution_path=Path("non_existent_file.md"),
+        )
+        # We expect this to succeed
+        exit_code = 0
+    except SystemExit as e:
+        # Capture the exit code if Typer raises it
+        exit_code = e.code
 
     # Assert
-    assert result.exit_code == 0, f"CLI command failed for case '{name}': {result.stdout}\n{result.stderr}"
+    assert exit_code == 0, f"CLI function failed for case '{name}' with exit code {exit_code}"
     assert output_file.exists()
 
     with open(output_file, "r") as f:
