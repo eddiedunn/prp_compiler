@@ -2,6 +2,7 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
+import importlib
 from typing import Tuple
 from .config import ALLOWED_SHELL_COMMANDS
 
@@ -27,66 +28,111 @@ class Orchestrator:
         self.knowledge_store = knowledge_store
         self.planner = PlannerAgent(self.primitive_loader)
 
-        # The new dynamic dispatch map for actions.
-        self.action_handlers: Dict[str, Callable[..., str]] = {
-            "retrieve_knowledge": self.knowledge_store.retrieve,
-            # In the future, other actions like 'web_search' would be registered here.
-        }
-
     def execute_action(self, action: Action) -> str:
-        """Executes a single action using the handler map."""
-        handler = self.action_handlers.get(action.tool_name)
-        if not handler:
-            return f"[ERROR] Action '{action.tool_name}' not found in handler map."
-        
-        # The 'query' key is a simplification for now. A more robust solution
-        # would inspect the handler's signature, but this is sufficient.
-        query = action.arguments.get("query", "")
-        if not query:
-             return f"[ERROR] Missing 'query' argument for action '{action.tool_name}'."
-        
-        # Assuming all current handlers take a single 'query' argument.
-        results = handler(query)
-        return f"Retrieved {len(results)} chunks for query: '{query}'\nContent:\n" + "\n".join(results)
+        """Dynamically loads and executes an action based on the primitive manifest."""
+        try:
+            action_primitive = self.primitive_loader.get_primitive('actions', action.tool_name)
+            if not action_primitive:
+                return f"[ERROR] Action '{action.tool_name}' not found in manifest."
+
+            entrypoint = action_primitive['entrypoint']
+            parts = entrypoint.split(':')
+            module_path = parts[0]
+            
+            action_function = None
+
+            # Case 1: Entrypoint is a method on a class (e.g., 'module:ClassName:method_name')
+            if len(parts) == 3:
+                class_name, method_name = parts[1], parts[2]
+                # This is a simplification. A real implementation would need a more
+                # robust way to map class names to the correct instance.
+                if class_name == 'KnowledgeStore':
+                    instance = self.knowledge_store
+                    action_function = getattr(instance, method_name)
+                else:
+                    # If other classes with actions are added, they need to be handled here.
+                    return f"[ERROR] Unknown class '{class_name}' in entrypoint for action '{action.tool_name}'."
+            
+            # Case 2: Entrypoint is a standalone function (e.g., 'module:function_name')
+            elif len(parts) == 2:
+                function_name = parts[1]
+                action_module = importlib.import_module(module_path)
+                action_function = getattr(action_module, function_name)
+            
+            else:
+                return f"[ERROR] Invalid entrypoint format for action '{action.tool_name}'."
+
+            if not action_function:
+                return f"[ERROR] Could not resolve action function for '{action.tool_name}'."
+
+            # Execute the action
+            result = action_function(**action.arguments)
+            return str(result)
+
+        except (ImportError, AttributeError, TypeError, Exception) as e:
+            return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
     def run(self, user_goal: str, max_steps: int = 10) -> Tuple[str, str]:
         """Drives the main ReAct loop and assembles the final context."""
         planner_gen = self.planner.run_planning_loop(user_goal, max_steps=max_steps)
         final_context_parts = []
         final_plan_args = None
-        
         observation = "No observation yet. Start by thinking about the user's goal."
-        
-        for _ in range(max_steps):
-            try:
-                step = planner_gen.send(observation)
+
+        try:
+            # Prime the generator to get the first step
+            step = next(planner_gen)
+
+            for _ in range(max_steps):
+                thought_text = f"Thought: {step.thought.reasoning}\nCritique: {step.thought.criticism}"
+                final_context_parts.append(thought_text)
+                # logging.info(thought_text)
+
                 action = step.thought.next_action
-                
-                final_context_parts.append(f"Thought: {step.thought.reasoning}\nAction: {action.tool_name}({action.arguments})")
+                action_text = f"Action: {action.tool_name}({action.arguments})"
+                final_context_parts.append(action_text)
+                # logging.info(action_text)
 
                 if action.tool_name == "finish":
                     final_plan_args = action.arguments
-                    break
+                    break  # Exit loop immediately on finish
 
+                # Execute the action and get the observation for the *next* step
                 observation = self.execute_action(action)
-                final_context_parts.append(f"Observation: {observation}")
+                observation_text = f"Observation: {observation}"
+                final_context_parts.append(observation_text)
+                # logging.info(observation_text)
 
-            except StopIteration:
-                break
-        
+                # Send observation to get the next step
+                step = planner_gen.send(observation)
+
+        except StopIteration:
+            # logging.warning("Planner finished, loop terminated.")
+            pass
+        except Exception as e:
+            # logging.error(f"An error occurred during the ReAct loop: {e}")
+            # Return partial context and error
+            return "", f"[ERROR] An unexpected error occurred: {e}\n\n" + "\n\n".join(final_context_parts)
+
+        # After the loop, assemble the final context
         if not final_plan_args:
-            raise RuntimeError("Planner failed to call 'finish' within max steps.")
+            return "", "[ERROR] Planner did not finish with a final plan.\n\n" + "\n\n".join(final_context_parts)
 
-        # Assemble final context from patterns and the loop history
-        schema_content = self.primitive_loader.get_primitive_content('schemas', final_plan_args['schema_choice'])
-        
-        for pattern_name in final_plan_args.get('pattern_references', []):
-            pattern_content = self.primitive_loader.get_primitive_content('patterns', pattern_name)
-            final_context_parts.append(f"\n--- Relevant Pattern: {pattern_name} ---\n{pattern_content}")
+        schema_choice = final_plan_args.get("schema_choice", "")
+        final_schema = self.primitive_loader.get_primitive_content(
+            "schemas", schema_choice
+        )
 
-        return schema_content, "\n\n".join(final_context_parts)
+        for pattern_ref in final_plan_args.get("pattern_references", []):
+            pattern_content = self.primitive_loader.get_primitive_content(
+                "patterns", pattern_ref
+            )
+            final_context_parts.append(
+                f"\n--- Relevant Pattern: {pattern_ref} ---\n{pattern_content}"
+            )
 
-
+        final_context = "\n\n".join(final_context_parts)
+        return final_schema, final_context
 
     def _resolve_callback(self, match: re.Match) -> str:
         """
