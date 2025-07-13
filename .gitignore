@@ -9,6 +9,7 @@
 
 # Local database
 chroma_db/
+*.sqlite
 
 # Virtual environment
 .venv/
