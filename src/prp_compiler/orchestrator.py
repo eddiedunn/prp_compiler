@@ -136,19 +136,12 @@ class Orchestrator:
 
         typer.secho(f"Selected strategy: {chosen_strategy_name}", fg=typer.colors.BLUE)
 
-        strategy_manifest = (
-            self.primitive_loader.primitives.get("strategies", {}).get(chosen_strategy_name)
-        )
-        if not strategy_manifest:
-            raise ValueError(f"Strategy '{chosen_strategy_name}' not found in manifest.")
         strategy_content = self.primitive_loader.get_primitive_content(
             "strategies", chosen_strategy_name
         )
-        strategy = dict(strategy_manifest)
-        strategy["template"] = strategy_content
 
-        context = ContextManager(self.planner.model)
-        context.add("Observation: ...")
+        context = ContextManager(model=self.planner.model)
+        context.add_entry("Observation", "Planner initialized.")
         final_plan_args = None
 
         for i in range(max_steps):
@@ -156,20 +149,20 @@ class Orchestrator:
                 step = self.planner.plan_step(
                     user_goal,
                     constitution,
-                    strategy,
-                    context.history,
+                    strategy_content,
+                    context.get_history_str().split("\n") if context.history else [],
                 )
 
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"
                     f"Critique: {step.thought.criticism}"
                 )
-                context.add(thought_text)
+                context.add_entry("Thought", thought_text)
                 typer.secho(f"\U0001F914 {thought_text}", fg=typer.colors.CYAN)
 
                 action = step.thought.next_action
                 action_text = f"Action: {action.tool_name}({action.arguments})"
-                context.add(action_text)
+                context.add_entry("Action", action_text)
                 typer.secho(f"\u25B6\uFE0F {action_text}", fg=typer.colors.MAGENTA)
 
                 if action.tool_name == "finish":
@@ -178,7 +171,7 @@ class Orchestrator:
 
                 observation = self.execute_action(action)
                 observation_text = f"Observation: {observation}"
-                context.add(observation_text)
+                context.add_entry("Observation", observation_text)
                 typer.secho(f"\U0001F440 {observation_text}", fg=typer.colors.GREEN)
 
                 # History is managed by the ContextManager
@@ -187,13 +180,13 @@ class Orchestrator:
                 return (
                     "",
                     f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
-                    + "\n\n".join(context.as_list()),
+                    + context.get_history_str(),
                 )
         else:  # This 'else' belongs to the 'for' loop
             return (
                 "",
                 "[ERROR] Planner did not finish within max_steps.\n\n"
-                + "\n\n".join(context.as_list()),
+                + context.get_history_str(),
             )
 
         # After the loop, assemble the final context
@@ -201,21 +194,21 @@ class Orchestrator:
             return (
                 "",
                 "[ERROR] Planner did not finish with a final plan.\n\n"
-                + "\n\n".join(context.as_list()),
+                + context.get_history_str(),
             )
 
         schema_choice = final_plan_args.get("schema_choice", "")
         schema_content = self.primitive_loader.get_primitive_content(
             "schemas", schema_choice
         )
-        context.add(f"Schema: {schema_choice}\n{schema_content}")
+        context.add_entry("Schema", f"{schema_choice}\n{schema_content}")
 
         for pattern_ref in final_plan_args.get("pattern_references", []):
             pattern_content = self.primitive_loader.get_primitive_content(
                 "patterns", pattern_ref
             )
-            context.add(f"Pattern: {pattern_ref}\n{pattern_content}")
-        final_context = "\n\n".join(context.as_list())
+            context.add_entry("Pattern", f"{pattern_ref}\n{pattern_content}")
+        final_context = context.get_history_str()
         if self.result_cache:
             self.result_cache.set(
                 cache_key,

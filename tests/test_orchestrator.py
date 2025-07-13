@@ -145,12 +145,10 @@ def test_run_captures_finish_args_and_assembles_context(
     mock_planner_instance.select_strategy.assert_called_once_with(
         "test goal", "test constitution"
     )
-    expected_strategy_arg = dict(strategy_manifest)
-    expected_strategy_arg["template"] = strategy_content
     mock_planner_instance.plan_step.assert_any_call(
         "test goal",
         "test constitution",
-        expected_strategy_arg,
+        strategy_content,
         ANY,
     )
 
