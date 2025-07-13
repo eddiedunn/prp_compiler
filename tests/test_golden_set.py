@@ -97,7 +97,8 @@ def test_golden_prp(
     mock_planner_step2 = make_mock_planner_response(
         "finish", {"schema_choice": "prp_base_schema", "pattern_references": []}
     )
-    mock_synthesizer_response = MagicMock(text=json.dumps(expected_output))
+    mock_synthesizer_response = MagicMock()
+    mock_synthesizer_response.text = json.dumps(expected_output)
 
     mock_llm_instance = mock_generative_model.return_value
     mock_llm_instance.generate_content.side_effect = [
