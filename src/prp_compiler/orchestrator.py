@@ -33,11 +33,13 @@ class Orchestrator:
         primitive_loader: PrimitiveLoader,
         knowledge_store: VectorStore,
         result_cache: "ResultCache | None" = None,
+        debug: bool = False,
     ):
         self.primitive_loader = primitive_loader
         self.knowledge_store = knowledge_store
         self.result_cache = result_cache
         self.planner = PlannerAgent(self.primitive_loader)
+        self.debug = debug
 
     def execute_action(self, action: Action) -> str:
         """Dynamically loads and executes an action primitive from its file path.
@@ -67,13 +69,15 @@ class Orchestrator:
             if not action_manifest:
                 raise ValueError(f"Action '{action.tool_name}' not found in manifest.")
 
-            allowed_cmds = action_manifest.get("allowed_shell_commands")
-            if allowed_cmds is not None:
-                cmd = action.arguments.get("command")
-                if cmd and cmd.split()[0] not in allowed_cmds:
+            def secure_subprocess_run(command_parts: list[str], **kwargs):
+                allowed_cmds = action_manifest.get("allowed_shell_commands", [])
+                if not command_parts or command_parts[0] not in allowed_cmds:
                     raise PermissionError(
-                        f"Command '{cmd}' not allowed for action '{action.tool_name}'"
+                        f"Command '{command_parts[0]}' is not allowed for action '{action.tool_name}'. Allowed: {allowed_cmds}"
                     )
+                return subprocess.run(command_parts, **kwargs)
+
+            action_context = {"secure_run": secure_subprocess_run}
 
             # Install action-specific dependencies if specified
             req_path = Path(action_manifest["base_path"]) / "requirements.txt"
@@ -99,6 +103,8 @@ class Orchestrator:
                 raise ImportError(f"Could not create module spec for {entrypoint_path}")
 
             action_module = importlib.util.module_from_spec(spec)
+            # Inject secure subprocess runner
+            action_module.subprocess_run = secure_subprocess_run
             spec.loader.exec_module(action_module)
 
             action_function = getattr(action_module, function_str)
@@ -111,6 +117,8 @@ class Orchestrator:
                 self.result_cache.set(cache_key, {"result": result_str})
 
             return result_str
+        except PermissionError:
+            raise
         except Exception as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
@@ -120,7 +128,7 @@ class Orchestrator:
         constitution: str,
         max_steps: int = 10,
         strategy_name: str | None = None,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, str, ContextManager]:
         """Drives the main ReAct loop and assembles the final context."""
         cache_key = self._compute_cache_key(user_goal)
         if self.result_cache:
@@ -145,7 +153,6 @@ class Orchestrator:
         )
 
         context = ContextManager(model=None)  # Pass None to disable summarization in tests
-        context.add_entry("Observation", "Planner initialized.")
         final_plan_args = None
 
         for i in range(max_steps):
@@ -161,22 +168,25 @@ class Orchestrator:
                     f"Thought: {step.thought.reasoning}\n"
                     f"Critique: {step.thought.criticism}"
                 )
-                context.add_entry("Thought", thought_text)
-                typer.secho(f"\U0001F914 {thought_text}", fg=typer.colors.CYAN)
+                if self.debug:
+                    typer.secho(f"\U0001F914 {thought_text}", fg=typer.colors.CYAN)
 
                 action = step.thought.next_action
                 action_text = f"Action: {action.tool_name}({action.arguments})"
-                context.add_entry("Action", action_text)
-                typer.secho(f"\u25B6\uFE0F {action_text}", fg=typer.colors.MAGENTA)
+                if self.debug:
+                    typer.secho(f"\u25B6\uFE0F {action_text}", fg=typer.colors.MAGENTA)
 
                 if action.tool_name == "finish":
                     final_plan_args = action.arguments
+                    context.add_step(step)
                     break
 
                 observation = self.execute_action(action)
-                observation_text = f"Observation: {observation}"
-                context.add_entry("Observation", observation_text)
-                typer.secho(f"\U0001F440 {observation_text}", fg=typer.colors.GREEN)
+                step.observation = observation
+                if self.debug:
+                    typer.secho(f"\U0001F440 Observation: {observation}", fg=typer.colors.GREEN)
+
+                context.add_step(step)
 
                 # History is managed by the ContextManager
 
@@ -204,7 +214,7 @@ class Orchestrator:
         schema_choice = final_plan_args.get("schema_choice", "")
 
         final_context_parts = []
-        final_context_parts.append("\n\n".join(context.as_list()))
+        final_context_parts.append(context.get_history_str())
 
         for pattern_ref in final_plan_args.get("pattern_references", []):
             pattern_content = self.primitive_loader.get_primitive_content(
@@ -220,7 +230,7 @@ class Orchestrator:
                 cache_key,
                 {"schema_choice": schema_choice, "final_context": final_context},
             )
-        return (schema_choice, final_context)
+        return (schema_choice, final_context, context)
 
     def _compute_cache_key(self, user_goal: str) -> str:
         """Generate a cache key from the goal and loaded primitives."""
@@ -228,10 +238,11 @@ class Orchestrator:
 
         parts = [user_goal]
         for p_type, prims in self.primitive_loader.primitives.items():
-            for name, manifest in prims.items():
+            for name, manifest in sorted(prims.items()):
                 version = manifest.get("version", "")
-                parts.append(f"{p_type}:{name}:{version}")
-        joined = "|".join(sorted(parts))
+                content_hash = manifest.get("content_hash", "")
+                parts.append(f"{p_type}:{name}:{version}:{content_hash}")
+        joined = "|".join(parts)
         return hashlib.sha256(joined.encode()).hexdigest()
 
     def _compute_action_cache_key(self, action: Action) -> str:

@@ -139,7 +139,7 @@ def test_run_captures_finish_args_and_assembles_context(
     orchestrator.execute_action = MagicMock(return_value="file1.txt")
 
     # Act
-    schema_choice, final_context = orchestrator.run(
+    schema_choice, final_context, history = orchestrator.run(
         "test goal", "test constitution"
     )
 
@@ -166,6 +166,7 @@ def test_run_captures_finish_args_and_assembles_context(
     # 3. Check that the schema and pattern content were appended correctly
     assert "Schema: test_schema\n{\"title\": \"Test Schema\"}" in final_context
     assert "Pattern: test_pattern\nThis is a test pattern." in final_context
+    assert history.get_structured_history()
 
 @patch("subprocess.run")
 def test_resolve_dynamic_content_allowed_command(mock_run, mock_knowledge_store):
@@ -192,3 +193,39 @@ def test_resolve_dynamic_content_file_not_found(mock_knowledge_store):
     orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
     result = orchestrator._resolve_dynamic_content("Include: @(/nope.txt)")
     assert "[ERROR]" in result
+
+
+def test_cache_key_includes_content_hash(mock_knowledge_store):
+    loader1 = MagicMock()
+    loader1.primitives = {"actions": {"a": {"version": "1.0.0", "content_hash": "abc"}}}
+    orchestrator1 = Orchestrator(loader1, mock_knowledge_store)
+
+    loader2 = MagicMock()
+    loader2.primitives = {"actions": {"a": {"version": "1.0.0", "content_hash": "def"}}}
+    orchestrator2 = Orchestrator(loader2, mock_knowledge_store)
+
+    key1 = orchestrator1._compute_cache_key("goal")
+    key2 = orchestrator2._compute_cache_key("goal")
+
+    assert key1 != key2
+
+
+def test_execute_action_disallows_unlisted_shell_command(tmp_path, mock_knowledge_store):
+    action_dir = tmp_path / "actions" / "bad" / "1.0.0"
+    action_dir.mkdir(parents=True)
+    manifest = {
+        "entrypoint": "bad.py:run",
+        "base_path": str(action_dir),
+        "version": "1.0.0",
+        "allowed_shell_commands": [],
+    }
+    (action_dir / "manifest.yml").write_text("")
+    (action_dir / "bad.py").write_text(
+        "def run():\n    subprocess_run(['ls'])\n"
+    )
+    loader = MagicMock()
+    loader.primitives = {"actions": {"bad": manifest}}
+    orchestrator = Orchestrator(loader, mock_knowledge_store)
+    action = Action(tool_name="bad", arguments={})
+    with pytest.raises(PermissionError):
+        orchestrator.execute_action(action)

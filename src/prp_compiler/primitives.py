@@ -104,6 +104,16 @@ class PrimitiveLoader:
                                 manifest = _simple_yaml_load(text)
                             manifest["version"] = str(current_version)
                             manifest["base_path"] = str(version_path.resolve())
+
+                            entrypoint_file = version_path / manifest.get("entrypoint", "")
+                            if entrypoint_file.is_file():
+                                import hashlib
+
+                                content_bytes = entrypoint_file.read_bytes()
+                                manifest["content_hash"] = hashlib.sha256(content_bytes).hexdigest()
+                            else:
+                                manifest["content_hash"] = None
+
                             latest_version = current_version
                             latest_manifest = manifest
             except ValueError:
