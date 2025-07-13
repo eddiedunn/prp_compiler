@@ -26,7 +26,7 @@ class PlannerAgent(BaseAgent):
         self.strategies_schema = self._create_schema_for_type("strategies", for_selection=True)
 
     def _create_schema_for_type(self, primitive_type: str, for_selection: bool = False) -> List[Dict[str, Any]]:
-        primitives = self.primitive_loader.get_all(primitive_type)
+        primitives = self.primitive_loader.get_all(primitive_type).copy()
         if for_selection:
             return [
                 {

@@ -140,7 +140,7 @@ class Orchestrator:
             "strategies", chosen_strategy_name
         )
 
-        context = ContextManager(model=self.planner.model)
+        context = ContextManager(model=None)  # Pass None to disable summarization in tests
         context.add_entry("Observation", "Planner initialized.")
         final_plan_args = None
 

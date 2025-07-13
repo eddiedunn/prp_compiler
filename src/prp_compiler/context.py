@@ -26,7 +26,7 @@ class ContextManager:
         return len(self._tokenizer.encode(self.get_history_str()))
 
     def _summarize_if_needed(self) -> None:
-        if self._current_token_count() > self.token_limit:
+        if self.model and self._current_token_count() > self.token_limit:
             print("[INFO] Context limit reached, summarizing history...")
             keep_last_n = 5
             to_summarize = self.history[:-keep_last_n]

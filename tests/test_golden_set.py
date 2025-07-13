@@ -103,15 +103,28 @@ def test_golden_prp(
     mock_synthesizer_response = MagicMock()
     mock_synthesizer_response.text = json.dumps(expected_output)
 
+    # 4. Create a router for mock LLM calls to make the test more robust.
+    # This avoids rigid side_effect lists that break if the call order changes.
+    def mock_llm_router(prompt, tools=None):
+        # Planner's first call is to select a strategy.
+        if "select_strategy" in str(tools):
+            return make_mock_planner_response(
+                "select_strategy", {"strategy_name": "simple_feature_strategy"}
+            )
+        # Planner's second call is to retrieve knowledge.
+        if "retrieve_knowledge" in str(tools):
+            return mock_planner_step1
+        # Planner's final call is to finish.
+        if "finish" in str(tools):
+            return mock_planner_step2
+        # The synthesizer's call contains the final context to generate the PRP.
+        if "Product Requirement Prompt (PRP)" in prompt:
+            return mock_synthesizer_response
+        # Fallback for any unexpected calls
+        return MagicMock(text="Unexpected call")
+
     mock_llm_instance = mock_generative_model.return_value
-    mock_llm_instance.generate_content.side_effect = [
-        make_mock_planner_response(
-            "select_strategy", {"strategy_name": "simple_feature_strategy"}
-        ),
-        mock_planner_step1,
-        mock_planner_step2,
-        mock_synthesizer_response,
-    ]
+    mock_llm_instance.generate_content.side_effect = mock_llm_router
 
     # Act
     # Directly call the compile function instead of using CliRunner
