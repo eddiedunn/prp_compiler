@@ -45,6 +45,7 @@ def test_primitive_loader_latest_version(temp_primitives_dir):
     action = actions[0]
     assert action["version"] == "1.1.0"
     assert action["name"] == "web_search"
+    assert "content_hash" in action
 
 
 def test_primitive_loader_ignores_invalid(temp_primitives_dir_invalid):

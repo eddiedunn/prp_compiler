@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from .models import Action, ReActStep, Thought
+
 import tiktoken
 
 
@@ -11,16 +13,30 @@ class ContextManager:
     def __init__(self, model: Any, token_limit: int = 80000) -> None:
         self.model = model
         self.token_limit = token_limit
-        self.history: List[Dict[str, str]] = []
+        self.history: List[ReActStep] = []
         self._tokenizer = tiktoken.get_encoding("cl100k_base")
 
-    def add_entry(self, role: str, content: str) -> None:
-        self.history.append({"role": role, "content": content})
+    def add_step(self, step: ReActStep) -> None:
+        """Adds a complete thought-action-observation step to the history."""
+        self.history.append(step)
         self._summarize_if_needed()
 
-    def get_history_str(self, subset: List[Dict[str, str]] | None = None) -> str:
+    def get_history_str(self, subset: List[ReActStep] | None = None) -> str:
+        """Returns a string representation of the history for prompting."""
         entries = subset if subset is not None else self.history
-        return "\n".join([f"{e['role']}: {e['content']}" for e in entries])
+        lines = []
+        for step in entries:
+            lines.append(f"Thought: {step.thought.reasoning}")
+            lines.append(
+                f"Action: {step.thought.next_action.tool_name}({step.thought.next_action.arguments})"
+            )
+            if step.observation is not None:
+                lines.append(f"Observation: {step.observation}")
+        return "\n".join(lines)
+
+    def get_structured_history(self) -> List[Dict[str, Any]]:
+        """Returns the history as serializable dictionaries."""
+        return [step.model_dump() for step in self.history]
 
     def _current_token_count(self) -> int:
         return len(self._tokenizer.encode(self.get_history_str()))
@@ -37,7 +53,15 @@ class ContextManager:
             )
             response = self.model.generate_content(summary_prompt)
             summary = response.text
-            self.history = [
-                {"role": "Observation", "content": f"Summary of previous steps: {summary}"}
-            ] + keep_these
-            print(f"[INFO] History summarized. New token count: {self._current_token_count()}")
+            summary_step = ReActStep(
+                thought=Thought(
+                    reasoning="summary",
+                    criticism="",
+                    next_action=Action(tool_name="summary", arguments={}),
+                ),
+                observation=f"Summary of previous steps: {summary}",
+            )
+            self.history = [summary_step] + keep_these
+            print(
+                f"[INFO] History summarized. New token count: {self._current_token_count()}"
+            )

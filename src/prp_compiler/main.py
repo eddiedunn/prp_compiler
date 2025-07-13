@@ -40,6 +40,11 @@ def compile(
         "--plan-out",
         help="Optional path to write the detailed plan/context buffer.",
     ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Enable real-time debug logging of the agent's loop.",
+    ),
 ):
     """Compiles a high-fidelity PRP from a user goal."""
     try:
@@ -66,9 +71,9 @@ def compile(
             constitution = ""
 
         typer.echo("2. Running Planner Agent to gather context...")
-        orchestrator = Orchestrator(loader, knowledge_store, result_cache)
+        orchestrator = Orchestrator(loader, knowledge_store, result_cache, debug=debug)
         chosen_strategy = strategy
-        schema_choice, final_context = orchestrator.run(
+        schema_choice, final_context, history = orchestrator.run(
             goal,
             constitution,
             strategy_name=chosen_strategy,
@@ -76,7 +81,7 @@ def compile(
 
         if plan_file is not None:
             plan_file.parent.mkdir(parents=True, exist_ok=True)
-            plan_file.write_text(final_context)
+            plan_file.write_text(json.dumps(history.get_structured_history(), indent=2))
 
         # Load the actual schema content based on the choice from the planner
         schema_content_str = loader.get_primitive_content("schemas", schema_choice)
@@ -147,7 +152,7 @@ def serve(
             goal, out_path = await queue.get()
             typer.echo(f"Worker {name} starting: {goal}")
             orchestrator = Orchestrator(loader, knowledge_store, result_cache)
-            schema_choice, final_context = orchestrator.run(
+            schema_choice, final_context, _ = orchestrator.run(
                 goal,
                 constitution_path.read_text() if constitution_path.exists() else "",
             )

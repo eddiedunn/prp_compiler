@@ -25,14 +25,23 @@ def mock_result_cache(monkeypatch):
 
 @pytest.fixture
 def mock_orchestrator(monkeypatch):
+    class DummyContext:
+        def get_structured_history(self):
+            return [{"thought": {"reasoning": "r", "criticism": "", "next_action": {"tool_name": "finish", "arguments": {}}}, "observation": "o"}]
+
     class DummyOrchestrator:
-        def __init__(self, loader, knowledge_store, result_cache):
-            pass
+        def __init__(self, loader, knowledge_store, result_cache, debug=False):
+            self.debug = debug
 
         def run(self, goal, constitution, max_steps=10, strategy_name=None):
+            if self.debug:
+                typer.echo("Thought: r")
+                typer.echo("Action: finish({})")
+                typer.echo("Observation: o")
             return (
                 "test_schema",
                 "dummy context",
+                DummyContext(),
             )
 
     monkeypatch.setattr("src.prp_compiler.main.Orchestrator", DummyOrchestrator)
@@ -133,4 +142,40 @@ def test_cli_compile_command(
             data = json.load(f)
         assert data["goal"] == "Test goal"
         assert data["why"] == "Test why"
-        assert plan_file.read_text() == "dummy context"
+        plan_json = json.loads(plan_file.read_text())
+        assert isinstance(plan_json, list)
+
+
+def test_cli_debug_flag_outputs_steps(
+    mock_orchestrator,
+    mock_synthesizer,
+    mock_configure_gemini,
+    mock_knowledge_store,
+    mock_primitive_loader,
+    mock_result_cache,
+):
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = Path(tmpdir) / "test.json"
+        primitives_dir = Path(tmpdir) / "agent_primitives"
+        primitives_dir.mkdir()
+        plan_file = Path(tmpdir) / "plan.json"
+        result = runner.invoke(
+            app,
+            [
+                "compile",
+                "test-goal",
+                "--out",
+                str(output_file),
+                "--plan-out",
+                str(plan_file),
+                "--primitives-path",
+                str(primitives_dir),
+                "--debug",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Thought:" in result.stdout
+        assert "Action:" in result.stdout
+        assert "Observation:" in result.stdout
