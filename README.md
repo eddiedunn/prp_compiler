@@ -61,6 +61,20 @@ prp-compiler serve --workers 4
 
 This starts a simple async queue processor that can handle multiple PRP compilation jobs concurrently.
 
+## Development Quickstart
+
+New contributors can get up and running quickly using the `uv` command wrapper
+defined in `pyproject.toml`.
+
+```bash
+uv run lint      # style check via Ruff
+uv run validate  # static type analysis with mypy
+uv run pytest    # run the full test suite
+```
+
+Run `uv sync` whenever dependencies change to ensure your environment matches the
+project configuration.
+
 ## Contributing
 
 We welcome new primitives and improvements! See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the curation workflow and development process.
