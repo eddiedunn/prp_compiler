@@ -5,6 +5,7 @@ from typing import List
 
 import pytest
 from typer.testing import CliRunner
+import typer
 
 from src.prp_compiler.main import app
 

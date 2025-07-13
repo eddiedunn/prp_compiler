@@ -25,16 +25,21 @@ def find_golden_cases() -> list[tuple[str, Path, Path]]:
 
 
 # Helper to create a valid mock for the PlannerAgent.
-# This version ensures `fc.args` is a dict, as the planner expects.
-def make_mock_planner_response(tool_name, args):
-    fc = MagicMock()
-    fc.name = tool_name
-    fc.args = args  # The planner agent's `dict(fc.args)` works on a real dict.
-    part = MagicMock(function_call=fc)
-    candidate = MagicMock(content=MagicMock(parts=[part]))
-    # Add a .text attribute to prevent TypeErrors if it's accessed by mistake
-    # by a part of the system that expects text (like the synthesizer).
-    response = MagicMock(candidates=[candidate], text="")
+# The original version was subtly flawed in its mock construction, leading
+# to Pydantic validation errors where a MagicMock was passed instead of a string.
+def make_mock_planner_response(tool_name: str, args: dict) -> MagicMock:
+    """Return a mock Gemini response with a function call."""
+    response = MagicMock()
+
+    # Configure the nested attributes directly so attribute access on the
+    # response object returns real values instead of new MagicMocks.  When the
+    # code accesses `response.candidates[0].content.parts[0].function_call.name`
+    # it will get the provided string rather than another mock object.
+    response.candidates[0].content.parts[0].function_call.name = tool_name
+    response.candidates[0].content.parts[0].function_call.args = args
+
+    # Some parts of the code expect a ``text`` attribute on the response.
+    response.text = ""
     return response
 
 
@@ -80,6 +85,7 @@ def test_golden_prp(
     # Arrange
     # 1. Mock loaders and configurations
     mock_loader_instance = mock_loader_class.return_value
+
     # The old mock returned a JSON string for all calls to get_primitive_content,
     # which caused a KeyError when the orchestrator tried to format the "strategy" content.
     # This new mock correctly returns a strategy template or a schema based on the type.
@@ -92,6 +98,7 @@ def test_golden_prp(
         return ""  # Default for other types like patterns
 
     mock_loader_instance.get_primitive_content.side_effect = get_content_side_effect
+    mock_loader_instance.get_all.return_value = []
     mock_knowledge_store_instance = mock_knowledge_store_class.return_value
     mock_knowledge_store_instance.retrieve.return_value = ["mock knowledge"]
 
@@ -113,22 +120,30 @@ def test_golden_prp(
 
     # 4. Create a router for mock LLM calls to make the test more robust.
     # This avoids rigid side_effect lists that break if the call order changes.
+    call_count = {"planner": 0}
+
     def mock_llm_router(prompt, tools=None):
+        """Route LLM calls based on the tools provided and call order."""
         # Planner's first call is to select a strategy.
         if "select_strategy" in str(tools):
             return make_mock_planner_response(
                 "select_strategy", {"strategy_name": "simple_feature_strategy"}
             )
-        # Planner's second call is to retrieve knowledge.
-        if "retrieve_knowledge" in str(tools):
+
+        call_count["planner"] += 1
+
+        # The first planner step retrieves knowledge.
+        if call_count["planner"] == 1:
             return mock_planner_step1
-        # Planner's final call is to finish.
-        if "finish" in str(tools):
+
+        # The second planner step finishes.
+        if call_count["planner"] == 2:
             return mock_planner_step2
+
         # The synthesizer's call contains the final context to generate the PRP.
         if "Product Requirement Prompt (PRP)" in prompt:
             return mock_synthesizer_response
-        # Fallback for any unexpected calls
+
         return MagicMock(text="Unexpected call")
 
     mock_llm_instance = mock_generative_model.return_value
@@ -136,6 +151,7 @@ def test_golden_prp(
 
     # Act
     # Directly call the compile function instead of using CliRunner
+    exit_code = 0
     try:
         compile(
             goal=goal,
@@ -147,11 +163,11 @@ def test_golden_prp(
             strategy=None,
             plan_file=None,
         )
-        # We expect this to succeed
-        exit_code = 0
     except SystemExit as e:
         # Capture the exit code if Typer raises it
         exit_code = e.code
+    except Exception as e:  # pragma: no cover - unexpected errors cause failure
+        pytest.fail(f"Test failed with an unexpected exception: {e}")
 
     # Assert
     assert exit_code == 0, (

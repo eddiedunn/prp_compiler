@@ -19,7 +19,7 @@ def mock_google_embeddings(monkeypatch):
 def mock_configure_gemini(monkeypatch):
     """Fixture to mock configure_gemini to prevent real API calls in CLI tests."""
     mock = MagicMock()
-    monkeypatch.setattr("src.prp_compiler.config.configure_gemini", mock)
+    monkeypatch.setattr("src.prp_compiler.main.configure_gemini", mock)
     yield mock
 
 
