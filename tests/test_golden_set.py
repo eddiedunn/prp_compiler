@@ -115,6 +115,7 @@ def test_golden_prp(
             primitives_path=temp_agent_dir["base"],
             vector_db_path=Path(tmp_path / "chroma_db"),
             constitution_path=Path("non_existent_file.md"),
+            cache_db_path=Path(tmp_path / "cache.sqlite"),
         )
         # We expect this to succeed
         exit_code = 0

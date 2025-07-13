@@ -99,16 +99,13 @@ def test_run_captures_finish_args_and_assembles_context(
         ReActStep(
             thought=Thought(
                 reasoning="look", criticism="none",
-                next_action=Action("list_directory", {"directory_path": "."})
+                next_action=Action(tool_name="list_directory", arguments={"directory_path": "."})
             )
         ),
         ReActStep(
             thought=Thought(
                 reasoning="done", criticism="none",
-                next_action=Action(
-                    tool_name="finish",
-                    arguments={"schema_choice": "test_schema", "pattern_references": ["test_pattern"]}
-                )
+                next_action=Action(tool_name="finish", arguments={"schema_choice": "test_schema", "pattern_references": ["test_pattern"]})
             )
         )
     ]
@@ -121,11 +118,13 @@ def test_run_captures_finish_args_and_assembles_context(
         'This is a test pattern.'   # Second call for the pattern
     ]
 
-    orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
+    orchestrator = Orchestrator(mock_loader, mock_knowledge_store, MagicMock())
     orchestrator.execute_action = MagicMock(return_value="file1.txt")
 
     # Act
-    schema_choice, final_context = orchestrator.run("test goal", "test constitution")
+    schema_choice, final_context = orchestrator.run(
+        "test goal", "test constitution"
+    )
 
     mock_planner_instance.select_strategy.assert_called_once_with("test goal", "test constitution")
     mock_planner_instance.plan_step.assert_any_call(

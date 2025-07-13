@@ -9,9 +9,24 @@ from src.prp_compiler.main import app
 
 
 @pytest.fixture
+def mock_result_cache(monkeypatch):
+    class DummyResultCache:
+        def __init__(self, db_path):
+            pass
+
+        def get(self, key):
+            return None
+
+        def set(self, key, value):
+            pass
+
+    monkeypatch.setattr("src.prp_compiler.main.ResultCache", DummyResultCache)
+
+
+@pytest.fixture
 def mock_orchestrator(monkeypatch):
     class DummyOrchestrator:
-        def __init__(self, loader, knowledge_store):
+        def __init__(self, loader, knowledge_store, result_cache):
             pass
 
         def run(self, goal, constitution, max_steps=10, strategy_name=None):
@@ -86,6 +101,7 @@ def test_cli_compile_command(
     mock_configure_gemini,
     mock_knowledge_store,
     mock_primitive_loader,
+    mock_result_cache,
 ):
     runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmpdir:
