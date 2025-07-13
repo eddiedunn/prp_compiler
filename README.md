@@ -67,3 +67,5 @@ We welcome new primitives and improvements! See [CONTRIBUTING.md](CONTRIBUTING.m
 
 For an in-depth look at the system architecture, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+
+The compiler now supports result caching and dynamic context resolution. Use repeated runs to benefit from cache hits and embed file contents or command output in patterns using the @() and !() syntax.

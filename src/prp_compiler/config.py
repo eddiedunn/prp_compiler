@@ -15,6 +15,8 @@ DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_primitives/actions"
 DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_primitives/knowledge"
 DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_primitives/schemas"
 DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
+# Allowed shell commands for dynamic content resolution.
+ALLOWED_SHELL_COMMANDS = ["echo", "ls"]
 
 
 
