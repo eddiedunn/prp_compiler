@@ -1,6 +1,7 @@
 import json
 import tempfile
 from pathlib import Path
+from typing import List
 
 import pytest
 from typer.testing import CliRunner
@@ -98,6 +99,9 @@ def mock_knowledge_store(monkeypatch):
 
         def load(self):
             pass
+
+        def retrieve(self, query: str, k: int = 5) -> List[str]:
+            return [f"Mocked knowledge for '{query}'"]
 
     monkeypatch.setattr(
         "src.prp_compiler.main.ChromaKnowledgeStore", DummyKnowledgeStore

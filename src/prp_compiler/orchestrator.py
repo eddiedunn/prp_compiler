@@ -77,7 +77,6 @@ class Orchestrator:
                     )
                 return subprocess.run(command_parts, **kwargs)
 
-            action_context = {"secure_run": secure_subprocess_run}
 
             # Install action-specific dependencies if specified
             req_path = Path(action_manifest["base_path"]) / "requirements.txt"
@@ -104,7 +103,8 @@ class Orchestrator:
 
             action_module = importlib.util.module_from_spec(spec)
             # Inject secure subprocess runner
-            action_module.subprocess_run = secure_subprocess_run
+            if hasattr(action_module, 'subprocess_run'):
+                action_module.subprocess_run = secure_subprocess_run  # type: ignore
             spec.loader.exec_module(action_module)
 
             action_function = getattr(action_module, function_str)
@@ -138,7 +138,7 @@ class Orchestrator:
                 and "schema_choice" in cached
                 and "final_context" in cached
             ):
-                return cached["schema_choice"], cached["final_context"]
+                return cached["schema_choice"], cached["final_context"], ContextManager(model=None)
 
         # STEP 1: Select Strategy
         if strategy_name:

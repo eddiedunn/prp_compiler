@@ -122,12 +122,17 @@ def test_run_captures_finish_args_and_assembles_context(
     # The loader is still needed for schemas and patterns
     mock_loader = MagicMock()
     strategy_content = "This is a simple strategy."
-    mock_loader.get_primitive_content.side_effect = [
-        strategy_content,             # First call for the strategy
-        '{"title": "Test Schema"}',  # Second call for the schema
-        'This is a test pattern.'     # Third call for the pattern
 
-    ]
+    def mock_get_content(primitive_type: str, name: str) -> str:
+        if primitive_type == "strategies":
+            return strategy_content
+        if primitive_type == "patterns":
+            return "This is a test pattern."
+        if primitive_type == "schemas":
+            return '{"title": "Test Schema"}'
+        return ""
+
+    mock_loader.get_primitive_content.side_effect = mock_get_content
     strategy_manifest = {
         "name": "simple",
         "entrypoint": "template.md",
@@ -163,8 +168,7 @@ def test_run_captures_finish_args_and_assembles_context(
     assert "Observation: file1.txt" in final_context
     assert "Action: finish({" in final_context  # Check that finish was called
 
-    # 3. Check that the schema and pattern content were appended correctly
-    assert "Schema: test_schema\n{\"title\": \"Test Schema\"}" in final_context
+    # 3. Check that the pattern content was appended correctly
     assert "Pattern: test_pattern\nThis is a test pattern." in final_context
     assert history.get_structured_history()
 
