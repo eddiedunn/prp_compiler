@@ -35,6 +35,11 @@ def compile(
     strategy: str = typer.Option(
         None, help="Manually specify a strategy name to use."
     ),
+    plan_file: Path | None = typer.Option(
+        None,
+        "--plan-out",
+        help="Optional path to write the detailed plan/context buffer.",
+    ),
 ):
     """Compiles a high-fidelity PRP from a user goal."""
     try:
@@ -68,6 +73,10 @@ def compile(
             constitution,
             strategy_name=chosen_strategy,
         )
+
+        if plan_file is not None:
+            plan_file.parent.mkdir(parents=True, exist_ok=True)
+            plan_file.write_text(final_context)
 
         # Load the actual schema content based on the choice from the planner
         schema_content_str = loader.get_primitive_content("schemas", schema_choice)
