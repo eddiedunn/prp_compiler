@@ -24,13 +24,24 @@ def configure_gemini():
     """Loads the Gemini API key and configures the genai library."""
     if not genai:
         return
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
+    
+    # First try to get API key from environment variable
+    api_key = os.environ.get("GEMINI_API_KEY")
+    
+    # If not found, try loading from .env file
+    if not api_key:
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(PROJECT_ROOT / ".env")
+            api_key = os.environ.get("GEMINI_API_KEY")
+        except ImportError:
+            pass
+    
     if not api_key:
         raise ValueError(
-            (
-                "GEMINI_API_KEY not found. Please set it in your .env file or "
-                "environment variables."
-            )
+            "GEMINI_API_KEY not found. Please set it in your environment variables or .env file.\n"
+            "Example: export GEMINI_API_KEY='your-api-key-here'"
         )
+    
+    # Configure the genai library with just the API key
     genai.configure(api_key=api_key)
