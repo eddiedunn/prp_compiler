@@ -68,7 +68,6 @@ def test_execute_action_dynamically_imports_and_runs_function(
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
     action = Action(tool_name=action_name, arguments={"path": "/tmp"})
-    mock_subprocess_run.return_value = None
 
     # Act
     result = orchestrator.execute_action(action)
@@ -85,7 +84,9 @@ def test_execute_action_dynamically_imports_and_runs_function(
 
     # 3. Verify the result is the string representation of the function's return value
     assert result == str({"status": "success"})
-    mock_subprocess_run.assert_called()
+    # Under this test's setup, no requirements.txt exists at the fake path,
+    # so subprocess.run should not be called.
+    mock_subprocess_run.assert_not_called()
 
 
 @patch("src.prp_compiler.orchestrator.PlannerAgent")
@@ -126,9 +127,12 @@ def test_run_captures_finish_args_and_assembles_context(
         'This is a test pattern.'     # Third call for the pattern
 
     ]
-    mock_loader.primitives = {
-        "strategies": {"simple": {"name": "simple", "entrypoint": "template.md", "base_path": "/tmp"}}
+    strategy_manifest = {
+        "name": "simple",
+        "entrypoint": "template.md",
+        "base_path": "/tmp",
     }
+    mock_loader.primitives = {"strategies": {"simple": strategy_manifest}}
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store, MagicMock())
     orchestrator.execute_action = MagicMock(return_value="file1.txt")
@@ -141,12 +145,12 @@ def test_run_captures_finish_args_and_assembles_context(
     mock_planner_instance.select_strategy.assert_called_once_with(
         "test goal", "test constitution"
     )
+    expected_strategy_arg = dict(strategy_manifest)
+    expected_strategy_arg["template"] = strategy_content
     mock_planner_instance.plan_step.assert_any_call(
         "test goal",
         "test constitution",
-
-        strategy_content,
-
+        expected_strategy_arg,
         ANY,
     )
 
