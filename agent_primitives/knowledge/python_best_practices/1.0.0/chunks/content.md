@@ -27,12 +27,12 @@ my_project/
 
 `uv` is an extremely fast Python package installer and resolver, written in Rust, designed as a drop-in replacement for `pip` and `pip-tools`.
 
-- **Installation:** `pip install uv`
-- **Creating a Virtual Environment:** `uv venv`
-- **Activating:** `source .venv/bin/activate`
+- **Installation:** `curl -sSf https://astral.sh/uv/install.sh | sh`
+- **Creating a Virtual Environment:** `uv venv` (creates `.venv` in the current directory)
+- **Activating (optional):** `source .venv/bin/activate` (not needed when using `uv run`)
 - **Adding a Dependency:** `uv pip install <package>` (e.g., `uv pip install pydantic`)
 - **Syncing with `pyproject.toml`:** `uv pip sync pyproject.toml` installs all dependencies defined in the project file.
-- **Running scripts:** `uv run <script_name>` executes a script defined in `pyproject.toml`'s `[tool.uv.scripts]` section.
+- **Running commands:** Always use `uv run <command>` instead of directly running Python commands (e.g., `uv run pytest` instead of `pytest`)
 
 Example `pyproject.toml` dependencies:
 
@@ -76,7 +76,7 @@ def test_add_numbers(a, b, expected):
     assert add_numbers(a, b) == expected
 ```
 
-- **Running Tests:** `uv run pytest`
+- **Running Tests:** Always use `uv run pytest` to ensure tests run in the project's virtual environment
 
 ## 4. Code Style and Linting with `ruff`
 
@@ -92,9 +92,9 @@ line-length = 88
 select = ["E", "F", "W", "I"] # Enable Flake8 error/warning codes and isort
 ```
 
-- **Checking for Errors:** `ruff check .`
-- **Fixing Errors Automatically:** `ruff check . --fix`
-- **Formatting Code:** `ruff format .`
+- **Checking for Errors:** `uv run ruff check .`
+- **Fixing Errors Automatically:** `uv run ruff check . --fix`
+- **Formatting Code:** `uv run ruff format .`
 
 ## 5. Type Checking with `mypy`
 
@@ -112,7 +112,7 @@ module = "third_party_lib.*"
 ignore_missing_imports = true
 ```
 
-- **Running:** `mypy src/`
+- **Running:** `uv run mypy src/`
 
 ## 6. Data Validation with `Pydantic`
 
