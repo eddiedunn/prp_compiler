@@ -1,156 +1,231 @@
+from pathlib import Path
+from unittest.mock import ANY, MagicMock, patch
+
+import subprocess
 import pytest
-from unittest.mock import patch
-import os
-import stat
-import tempfile
 
+from src.prp_compiler.models import Action, ReActStep, Thought
 from src.prp_compiler.orchestrator import Orchestrator
-from src.prp_compiler.models import ManifestItem, ExecutionPlan, ToolPlanItem
 
 
 @pytest.fixture
-def temp_capabilities(tmp_path):
-    """Creates a temporary agent_capabilities directory with dummy files."""
-    base_path = tmp_path / "agent_capabilities"
-
-    schemas_path = base_path / "schemas"
-    knowledge_path = base_path / "knowledge"
-    tools_path = base_path / "tools"
-    schemas_path.mkdir(parents=True)
-    knowledge_path.mkdir(parents=True)
-    tools_path.mkdir(parents=True)
-
-    schema_file = schemas_path / "test_schema.md"
-    schema_file.write_text("This is the schema template.")
-
-    knowledge_file = knowledge_path / "test_knowledge.md"
-    knowledge_file.write_text("This is the knowledge content.")
-
-    tool_file = tools_path / "test_tool.md"
-    tool_file.write_text("This is the tool content.\n!echo 'dynamic part'")
-
-    return {"schema": schema_file, "knowledge": knowledge_file, "tool": tool_file}
+def mock_knowledge_store():
+    """A pytest fixture to create a mocked KnowledgeStore."""
+    return MagicMock()
 
 
-@pytest.fixture
-def sample_manifests(temp_capabilities):
-    """Provides sample manifest data pointing to temporary files."""
-    tools = [
-        ManifestItem(
-            name="test_tool",
-            description="A test tool",
-            file_path=str(temp_capabilities["tool"]),
+@patch("src.prp_compiler.orchestrator.PlannerAgent")
+def test_execute_action_retrieve_knowledge(MockPlannerAgent, mock_knowledge_store):
+    """execute_action should return joined chunks from the knowledge store."""
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_knowledge_store.retrieve.return_value = ["ChunkA", "ChunkB"]
+
+    action = Action(tool_name="retrieve_knowledge", arguments={"query": "foo"})
+    result = orchestrator.execute_action(action)
+
+    mock_knowledge_store.retrieve.assert_called_once_with("foo")
+    assert result == "ChunkA\nChunkB"
+
+
+@patch("subprocess.run")
+@patch("importlib.util.module_from_spec")
+@patch("importlib.util.spec_from_file_location")
+def test_execute_action_dynamically_imports_and_runs_function(
+    mock_spec_from_file_location,
+    mock_module_from_spec,
+    mock_subprocess_run,
+    mock_knowledge_store,
+):
+    """
+    Tests that execute_action correctly loads and runs an action's Python
+    function from a file path.
+    """
+    # Arrange
+    mock_loader = MagicMock()
+    action_name = "test_action"
+
+    # Mock the action's Python module and function
+    mock_action_function = MagicMock(return_value={"status": "success"})
+    mock_action_module = MagicMock()
+    mock_action_module.run = mock_action_function
+
+    # Mock the importlib.util machinery
+    mock_spec = MagicMock()
+    # This is needed because the real spec.loader is not None
+    mock_spec.loader.exec_module = MagicMock()
+    mock_spec_from_file_location.return_value = mock_spec
+    mock_module_from_spec.return_value = mock_action_module
+
+    # Configure the loader to return the manifest, including the base path
+    mock_loader.primitives = {
+        "actions": {
+            action_name: {
+                "version": "1.0.0",
+                "entrypoint": "test_action.py:run",
+                "base_path": "/fake/primitives/actions/test_action/1.0.0"
+            }
+        }
+    }
+
+    orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
+    action = Action(tool_name=action_name, arguments={"path": "/tmp"})
+
+    # Act
+    result = orchestrator.execute_action(action)
+
+    # Assert
+    # 1. Verify that the spec was created from the correct file path
+    expected_path = (
+        Path("/fake/primitives/actions/test_action/1.0.0") / "test_action.py"
+    )
+    mock_spec_from_file_location.assert_called_once_with(action_name, expected_path)
+
+    # 2. Verify the action function was called with the correct arguments
+    mock_action_function.assert_called_once_with(path="/tmp")
+
+    # 3. Verify the result is the string representation of the function's return value
+    assert result == str({"status": "success"})
+    # Under this test's setup, no requirements.txt exists at the fake path,
+    # so subprocess.run should not be called.
+    mock_subprocess_run.assert_not_called()
+
+
+@patch("src.prp_compiler.orchestrator.PlannerAgent")
+def test_run_captures_finish_args_and_assembles_context(
+    MockPlannerAgent, mock_knowledge_store
+):
+    """
+    Tests that the main run loop correctly captures the 'finish' action's
+    arguments and uses them to assemble and return the final context and schema
+    choice.
+    """
+    # Arrange
+    mock_planner_instance = MockPlannerAgent.return_value
+    mock_planner_instance.select_strategy.return_value = "simple"
+
+    steps = [
+        ReActStep(
+            thought=Thought(
+                reasoning="look", criticism="none",
+                next_action=Action(tool_name="list_directory", arguments={"directory_path": "."})
+            )
+        ),
+        ReActStep(
+            thought=Thought(
+                reasoning="done", criticism="none",
+                next_action=Action(tool_name="finish", arguments={"schema_choice": "test_schema", "pattern_references": ["test_pattern"]})
+            )
         )
     ]
-    knowledge = [
-        ManifestItem(
-            name="test_knowledge",
-            description="A knowledge doc",
-            file_path=str(temp_capabilities["knowledge"]),
-        )
+    mock_planner_instance.plan_step.side_effect = steps
+
+    # The loader is still needed for schemas and patterns
+    mock_loader = MagicMock()
+    strategy_content = "This is a simple strategy."
+    mock_loader.get_primitive_content.side_effect = [
+        strategy_content,             # First call for the strategy
+        '{"title": "Test Schema"}',  # Second call for the schema
+        'This is a test pattern.'     # Third call for the pattern
+
     ]
-    schemas = [
-        ManifestItem(
-            name="test_schema",
-            description="A schema",
-            file_path=str(temp_capabilities["schema"]),
-        )
-    ]
-    return tools, knowledge, schemas
+    strategy_manifest = {
+        "name": "simple",
+        "entrypoint": "template.md",
+        "base_path": "/tmp",
+    }
+    mock_loader.primitives = {"strategies": {"simple": strategy_manifest}}
 
+    orchestrator = Orchestrator(mock_loader, mock_knowledge_store, MagicMock())
+    orchestrator.execute_action = MagicMock(return_value="file1.txt")
 
-@pytest.fixture
-def orchestrator(sample_manifests):
-    """Provides an Orchestrator instance initialized with sample manifests."""
-    tools, knowledge, schemas = sample_manifests
-    return Orchestrator(tools, knowledge, schemas)
-
-
-def test_assemble_context_concatenates_content(orchestrator, temp_capabilities):
-    """Tests that assemble_context reads and concatenates the full file contents."""
-    plan = ExecutionPlan(
-        tool_plan=[ToolPlanItem(command_name="test_tool", arguments="")],
-        knowledge_plan=["test_knowledge"],
-        schema_choice="test_schema",
+    # Act
+    schema_choice, final_context, history = orchestrator.run(
+        "test goal", "test constitution"
     )
 
-    with patch("subprocess.run") as mock_subprocess_run:
-        mock_subprocess_run.return_value.stdout = "dynamic part"
-
-        schema_template, resolved_context = orchestrator.assemble_context(plan)
-
-        # 1. Check if schema is read correctly
-        assert schema_template == temp_capabilities["schema"].read_text()
-
-        # 2. Check if knowledge content is in the context
-        assert temp_capabilities["knowledge"].read_text() in resolved_context
-
-        # 3. Check if tool content is in the context (before dynamic resolution)
-        assert "This is the tool content." in resolved_context
-
-        # 4. Check that the dynamic part was resolved and included
-        assert "dynamic part" in resolved_context
-
-        # 5. Check concatenation separator
-        assert "\n\n---\n\n" in resolved_context
-
-
-def test_assemble_context_handles_missing_items(orchestrator, capsys):
-    """Tests that warnings are printed for items not found in manifests."""
-    plan = ExecutionPlan(
-        tool_plan=[ToolPlanItem(command_name="fake_tool", arguments="")],
-        knowledge_plan=["fake_knowledge"],
-        schema_choice="test_schema",
+    mock_planner_instance.select_strategy.assert_called_once_with(
+        "test goal", "test constitution"
+    )
+    mock_planner_instance.plan_step.assert_any_call(
+        "test goal",
+        "test constitution",
+        strategy_content,
+        ANY,
     )
 
-    _, _ = orchestrator.assemble_context(plan)
+    # Assert
+    # 1. Check that the correct schema choice is returned
+    assert schema_choice == "test_schema"
 
-    captured = capsys.readouterr()
-    assert "[WARNING] Knowledge 'fake_knowledge' not found in manifest." in captured.out
-    assert "[WARNING] Tool 'fake_tool' not found in manifest." in captured.out
+    # 2. Check that the final context contains all the parts of the loop
+    assert "Thought: look" in final_context
+    assert "Action: list_directory({'directory_path': '.'})" in final_context
+    assert "Observation: file1.txt" in final_context
+    assert "Action: finish({" in final_context  # Check that finish was called
+
+    # 3. Check that the schema and pattern content were appended correctly
+    assert "Schema: test_schema\n{\"title\": \"Test Schema\"}" in final_context
+    assert "Pattern: test_pattern\nThis is a test pattern." in final_context
+    assert history.get_structured_history()
+
+@patch("subprocess.run")
+def test_resolve_dynamic_content_allowed_command(mock_run, mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_run.return_value = subprocess.CompletedProcess(args=["echo"], returncode=0, stdout="hello\n")
+    result = orchestrator._resolve_dynamic_content("Value: !(echo hello)")
+    assert result == "Value: hello"
+
+@patch("subprocess.run")
+def test_resolve_dynamic_content_command_failure(mock_run, mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_run.side_effect = subprocess.CalledProcessError(1, ["ls"], "error")
+    result = orchestrator._resolve_dynamic_content("Files: !(ls missing)")
+    assert "[ERROR]" in result
 
 
-def test_assemble_context_schema_not_found(orchestrator):
-    """Tests that a ValueError is raised if the schema is not found."""
-    plan = ExecutionPlan(
-        tool_plan=[], knowledge_plan=[], schema_choice="non_existent_schema"
+def test_resolve_dynamic_content_disallowed_command(mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    result = orchestrator._resolve_dynamic_content("Bad: !(rm -rf /)")
+    assert "[DISALLOWED]" in result
+
+
+def test_resolve_dynamic_content_file_not_found(mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    result = orchestrator._resolve_dynamic_content("Include: @(/nope.txt)")
+    assert "[ERROR]" in result
+
+
+def test_cache_key_includes_content_hash(mock_knowledge_store):
+    loader1 = MagicMock()
+    loader1.primitives = {"actions": {"a": {"version": "1.0.0", "content_hash": "abc"}}}
+    orchestrator1 = Orchestrator(loader1, mock_knowledge_store)
+
+    loader2 = MagicMock()
+    loader2.primitives = {"actions": {"a": {"version": "1.0.0", "content_hash": "def"}}}
+    orchestrator2 = Orchestrator(loader2, mock_knowledge_store)
+
+    key1 = orchestrator1._compute_cache_key("goal")
+    key2 = orchestrator2._compute_cache_key("goal")
+
+    assert key1 != key2
+
+
+def test_execute_action_disallows_unlisted_shell_command(tmp_path, mock_knowledge_store):
+    action_dir = tmp_path / "actions" / "bad" / "1.0.0"
+    action_dir.mkdir(parents=True)
+    manifest = {
+        "entrypoint": "bad.py:run",
+        "base_path": str(action_dir),
+        "version": "1.0.0",
+        "allowed_shell_commands": [],
+    }
+    (action_dir / "manifest.yml").write_text("")
+    (action_dir / "bad.py").write_text(
+        "def run():\n    subprocess_run(['ls'])\n"
     )
-    with pytest.raises(
-        ValueError, match="Schema 'non_existent_schema' not found in manifest."
-    ):
-        orchestrator.assemble_context(plan)
-
-
-def test_resolve_dynamic_content_command_failure(orchestrator):
-    """Test that a failed shell command returns an error message."""
-    raw_context = "! non_existent_command_12345"
-    result = orchestrator._resolve_dynamic_content(raw_context)
-    assert "[ERROR: Command 'non_existent_command_12345' failed:" in result
-
-
-def test_resolve_dynamic_content_file_not_found(orchestrator):
-    """Test that a missing file reference returns an error message."""
-    raw_context = "@ /tmp/this_file_should_not_exist_12345.txt"
-    result = orchestrator._resolve_dynamic_content(raw_context)
-    assert (
-        result
-        == "[ERROR: File not found at '/tmp/this_file_should_not_exist_12345.txt']"
-    )
-
-
-def test_resolve_dynamic_content_file_read_error(orchestrator):
-    """Test that an unreadable file returns an error message."""
-    # Create a temporary file
-    fd, file_path = tempfile.mkstemp()
-    os.close(fd)
-
-    # Remove read permissions
-    os.chmod(file_path, stat.S_IWUSR)
-    try:
-        raw_context = f"@ {file_path}"
-        result = orchestrator._resolve_dynamic_content(raw_context)
-        assert f"[ERROR: Could not read file at '{file_path}':" in result
-    finally:
-        # Restore permissions to allow deletion
-        os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)
-        os.unlink(file_path)
+    loader = MagicMock()
+    loader.primitives = {"actions": {"bad": manifest}}
+    orchestrator = Orchestrator(loader, mock_knowledge_store)
+    action = Action(tool_name="bad", arguments={})
+    with pytest.raises(PermissionError):
+        orchestrator.execute_action(action)

@@ -6,10 +6,10 @@ This project is an agentic system designed to automate the creation of high-fide
 
 The PRP Compiler operates through a sophisticated agentic workflow:
 
-1.  **Manifest Generation**: The system begins by scanning its capability directories (`tools/`, `knowledge/`, `schemas/`) to create manifests—JSON files that catalog all available resources.
-2.  **Planning Agent**: The `PlannerAgent` receives the user's high-level goal. It consults the manifests to understand the available tools, knowledge, and schemas. It then formulates a step-by-step `ExecutionPlan`, selecting the optimal resources for the task.
-3.  **Orchestration**: The `Orchestrator` takes the `ExecutionPlan` and resolves all dynamic content. It executes shell commands (for `!`) and reads file contents (for `@`) to assemble a complete context.
-4.  **Synthesizer Agent**: The `SynthesizerAgent` receives the final assembled context and the chosen schema template. It uses this information to generate the final, polished Product Requirement Prompt (PRP) in Markdown format.
+1.  **Primitive Curation**: The system organizes all agentic capabilities as versioned primitives in the `agent_primitives/` directory. Each primitive is an Action, Knowledge, Pattern, or Schema, and is described by a `manifest.yml`.
+2.  **Planning Agent (ReAct Loop)**: The `PlannerAgent` uses a ReAct (Reason + Act) loop to iteratively select actions, retrieve knowledge, and assemble context for the user goal, using function-calling and introspective reasoning.
+3.  **Orchestration**: The `Orchestrator` executes the ReAct loop, driving the planner and executing actions until the agent determines the context is complete.
+4.  **Synthesizer Agent**: The `SynthesizerAgent` receives the final assembled context and schema and produces a validated PRP JSON, strictly conforming to the chosen schema.
 
 ## Installation
 
@@ -21,15 +21,13 @@ To install the project and its dependencies, run the following command from the 
 uv pip install -e .
 ```
 
-This installs the package in editable mode, meaning any changes to the source code will be immediately available to the command-line interface.
 
 ## Configuration
 
-To use the agentic capabilities of this tool, you need a Google Gemini API key.
+The compiler requires a Google Gemini API key to function.
 
-1.  Create a file named `.env` in the root of the project directory.
-2.  Add your API key to the file like this:
-
+1.  Create a file named `.env` in the project root.
+2.  Add your API key to the file:
     ```
     GEMINI_API_KEY="your_api_key_here"
     ```
@@ -38,12 +36,50 @@ The application will automatically load this key to configure the Gemini client.
 
 ## Usage
 
-Once installed and configured, you can run the compiler from your terminal. The main command accepts a user goal and an output file path.
+Once installed and configured, you can run the compiler from your terminal. The main commands are:
 
-**Example:**
+### Compile a PRP
 
 ```bash
-prp-compiler --goal "Create a command-line tool for managing a to-do list" --output "my_todo_app_prp.md"
+prp-compiler compile "Create a command-line tool for managing a to-do list" --out my_todo_app_prp.json
 ```
 
-This command will trigger the full agentic workflow and write the final, synthesized PRP to `my_todo_app_prp.md`.
+This runs the full agentic workflow and writes the final PRP JSON to the specified file.
+
+### Build or Rebuild the Knowledge Vector Store
+
+```bash
+prp-compiler build-knowledge --primitives-path agent_primitives --vector-db-path chroma_db
+```
+
+This command (re)builds the vector database used for retrieval-augmented generation (RAG) from all curated knowledge primitives.
+### Run as a Service
+
+```bash
+prp-compiler serve --workers 4
+```
+
+This starts a simple async queue processor that can handle multiple PRP compilation jobs concurrently.
+
+## Development Quickstart
+
+New contributors can get up and running quickly using the `uv` command wrapper
+defined in `pyproject.toml`.
+
+```bash
+uv run lint      # style check via Ruff
+uv run validate  # static type analysis with mypy
+uv run pytest    # run the full test suite
+```
+
+Run `uv sync` whenever dependencies change to ensure your environment matches the
+project configuration.
+
+## Contributing
+
+We welcome new primitives and improvements! See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the curation workflow and development process.
+
+For an in-depth look at the system architecture, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+
+The compiler now supports result caching and dynamic context resolution. Use repeated runs to benefit from cache hits and embed file contents or command output in patterns using the @() and !() syntax.

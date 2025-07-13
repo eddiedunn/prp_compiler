@@ -1,0 +1,5 @@
+name: "prp_task_schema"
+type: "schema"
+version: "1.0.0"
+description: "A schema for defining a single, executable task with specific inputs, outputs, and execution commands."
+entrypoint: "schema.json"

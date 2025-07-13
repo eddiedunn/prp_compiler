@@ -1,0 +1,6 @@
+name: "rust_best_practices"
+type: "knowledge"
+version: "1.0.0"
+description: "A comprehensive guide to best practices for modern Rust development, including project structure with cargo workspaces, testing with nextest, error handling, and concurrency."
+entrypoint: "content.md"
+keywords: ["rust", "cargo", "nextest", "clippy", "tokio", "concurrency"]

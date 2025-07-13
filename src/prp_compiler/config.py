@@ -1,22 +1,36 @@
 import os
-from dotenv import load_dotenv
-import google.generativeai as genai
 from pathlib import Path
 
-# Define default paths. These assume a 'agent_capabilities' directory
-# in the current working directory where the command is run.
-DEFAULT_TOOLS_PATH = Path("./agent_capabilities/tools")
-DEFAULT_KNOWLEDGE_PATH = Path("./agent_capabilities/knowledge")
-DEFAULT_SCHEMAS_PATH = Path("./agent_capabilities/schemas")
-DEFAULT_MANIFEST_PATH = Path("./component_manifest.json")
+try:
+    import google.generativeai as genai
+except Exception:  # pragma: no cover
+    genai = None
+from dotenv import load_dotenv
+
+# Define the project root as the grandparent of this file's directory.
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Define default paths relative to the project root.
+DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_primitives/actions"
+DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_primitives/knowledge"
+DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_primitives/schemas"
+DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
+# Allowed shell commands for dynamic content resolution.
+ALLOWED_SHELL_COMMANDS = ["echo", "ls"]
+
 
 
 def configure_gemini():
     """Loads the Gemini API key and configures the genai library."""
+    if not genai:
+        return
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError(
-            "GEMINI_API_KEY not found. Please set it in your .env file or environment variables."
+            (
+                "GEMINI_API_KEY not found. Please set it in your .env file or "
+                "environment variables."
+            )
         )
     genai.configure(api_key=api_key)

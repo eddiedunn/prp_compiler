@@ -1,43 +1,74 @@
+import json
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from src.prp_compiler.agents.synthesizer import SynthesizerAgent
 
 
 @pytest.fixture
 def synthesizer_agent():
-    """Provides a SynthesizerAgent instance for testing."""
-    with patch("google.generativeai.GenerativeModel") as mock_model_constructor:
-        mock_model_instance = MagicMock()
-        mock_model_constructor.return_value = mock_model_instance
-        agent = SynthesizerAgent()
-        agent.mock_model = mock_model_instance
-        return agent
+    agent = SynthesizerAgent()
+    agent.model = MagicMock() # Mock the model at instance level
+    return agent
 
+@pytest.fixture
+def sample_schema():
+    return {
+        "type": "object",
+        "properties": {"goal": {"type": "string"}},
+        "required": ["goal"]
+    }
 
-def test_synthesizer_prompt_format(synthesizer_agent):
-    """Test that the synthesize() method constructs the correct prompt."""
-    schema_template = "# My Schema\n## Section 1"
-    context = "This is the assembled context from various sources."
-    expected_prp = "This is the final generated PRP."
+def test_synthesizer_valid_json_first_try(synthesizer_agent, sample_schema):
+    # Arrange
+    valid_json = {"goal": "Test goal"}
+    mock_response = MagicMock(text=json.dumps(valid_json))
+    synthesizer_agent.model.generate_content.return_value = mock_response
 
-    # Set up the mock response
-    mock_response = MagicMock()
-    mock_response.text = expected_prp
-    synthesizer_agent.mock_model.generate_content.return_value = mock_response
+    # Act
+    result = synthesizer_agent.synthesize(sample_schema, "context", "constitution")
 
-    # Call the method
-    result = synthesizer_agent.synthesize(schema_template, context)
+    # Assert
+    assert result == valid_json
+    synthesizer_agent.model.generate_content.assert_called_once()
 
-    # Check that the result is what the mock returned
-    assert result == expected_prp
+def test_synthesizer_invalid_then_valid_json(synthesizer_agent, sample_schema):
+    # Arrange
+    invalid_json_str = '{"wrong_key": "Test goal"}' # Fails schema validation
+    valid_json = {"goal": "Test goal"}
 
-    # Check that generate_content was called once
-    synthesizer_agent.mock_model.generate_content.assert_called_once()
+    mock_response1 = MagicMock(text=invalid_json_str)
+    mock_response2 = MagicMock(text=json.dumps(valid_json))
+    synthesizer_agent.model.generate_content.side_effect = [
+        mock_response1, mock_response2
+    ]
 
-    # Extract the prompt passed to the mock
-    prompt = synthesizer_agent.mock_model.generate_content.call_args[0][0]
+    # Act
+    result = synthesizer_agent.synthesize(
+        sample_schema, "context", "constitution", max_retries=2
+    )
 
-    # Assert that the prompt contains the schema and context
-    assert f"**Schema Template:**\n---\n{schema_template}\n---" in prompt
-    assert f"**Assembled Context:**\n---\n{context}\n---" in prompt
-    assert "Now, generate the final PRP as a complete Markdown document." in prompt
+    # Assert
+    assert result == valid_json
+    assert synthesizer_agent.model.generate_content.call_count == 2
+    # Check that the second prompt contained the error message
+    second_call_prompt = (
+        synthesizer_agent.model.generate_content.call_args_list[1][0][0]
+    )
+    assert "PREVIOUS ATTEMPT FAILED" in second_call_prompt
+    assert "'goal' is a required property" in second_call_prompt
+
+def test_synthesizer_fails_after_max_retries(synthesizer_agent, sample_schema):
+    # Arrange
+    invalid_response = MagicMock(text='{"wrong_key": "bad"}')
+    synthesizer_agent.model.generate_content.return_value = invalid_response
+
+    # Act & Assert
+    with pytest.raises(
+        RuntimeError, match="failed to produce a valid PRP JSON after 2 attempts"
+    ):
+        synthesizer_agent.synthesize(
+            sample_schema, "context", "constitution", max_retries=2
+        )
+    assert synthesizer_agent.model.generate_content.call_count == 2

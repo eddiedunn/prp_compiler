@@ -1,0 +1,6 @@
+{
+  "task": "copy_file",
+  "source": "/tmp/a.txt",
+  "destination": "/tmp/b.txt",
+  "status": "pending"
+}

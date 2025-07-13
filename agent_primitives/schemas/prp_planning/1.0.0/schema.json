@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PRP Planning Document",
+  "description": "A structured plan for executing a project, outlining key phases, tasks, and milestones.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "description": "The main title of the project plan.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "A high-level summary of the project's goals and scope.",
+      "type": "string"
+    },
+    "tasks": {
+      "description": "A list of tasks to be completed.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "A unique identifier for the task.",
+            "type": "string"
+          },
+          "description": {
+            "description": "A detailed description of the task.",
+            "type": "string"
+          },
+          "dependencies": {
+            "description": "A list of task IDs that this task depends on.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "description"]
+      }
+    }
+  },
+  "required": ["title", "summary", "tasks"]
+}

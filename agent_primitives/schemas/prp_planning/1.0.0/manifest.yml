@@ -1,0 +1,5 @@
+name: "prp_planning_schema"
+type: "schema"
+version: "1.0.0"
+description: "A schema for generating a structured project plan, outlining key phases, tasks, and milestones."
+entrypoint: "schema.json"

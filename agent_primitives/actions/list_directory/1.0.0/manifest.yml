@@ -1,0 +1,14 @@
+name: "list_directory"
+type: "action"
+version: "1.0.0"
+description: "Lists the contents of a directory, optionally recursively, to understand project structure."
+entrypoint: "list_directory.py:run"
+allowed_shell_commands: []
+inputs_schema:
+  type: "object"
+  properties:
+    directory_path:
+      type: "string"
+      description: "The path to the directory to list."
+  required:
+    - directory_path

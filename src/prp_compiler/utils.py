@@ -1,8 +1,15 @@
-import google.generativeai as genai
+try:
+    import tiktoken
+except Exception:  # pragma: no cover - allow running without tiktoken
+    tiktoken = None
 
 
-def count_tokens(text: str, model_name: str = "gemini-1.5-flash") -> int:
-    """Counts tokens using the Google Gemini tokenizer."""
-    # Assumes genai is configured. You might need to pass the model object.
-    model = genai.GenerativeModel(model_name)
-    return model.count_tokens(text).total_tokens
+def count_tokens(text: str) -> int:
+    """Counts tokens using the cl100k_base encoding used by modern models."""
+    if not tiktoken:
+        return len(text.split())
+    try:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    except KeyError:
+        encoding = tiktoken.encoding_for_model("gpt-4")
+    return len(encoding.encode(text))

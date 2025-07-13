@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PRP Technical Specification",
+  "description": "A detailed technical specification for a software component or system.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "description": "The title of the technical specification.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "A high-level overview of the component or system.",
+      "type": "string"
+    },
+    "components": {
+      "description": "A list of primary components, modules, or services.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The name of the component.",
+            "type": "string"
+          },
+          "description": {
+            "description": "A description of the component's purpose and responsibilities.",
+            "type": "string"
+          },
+          "functions": {
+            "description": "A list of functions or methods exposed by the component.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "signature": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": ["name", "signature", "description"]
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    }
+  },
+  "required": ["title", "summary", "components"]
+}

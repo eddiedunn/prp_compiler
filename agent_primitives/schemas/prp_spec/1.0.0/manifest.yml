@@ -1,0 +1,5 @@
+name: "prp_spec_schema"
+type: "schema"
+version: "1.0.0"
+description: "A schema for generating a detailed technical specification for a software component or system."
+entrypoint: "schema.json"

@@ -1,0 +1,6 @@
+name: "api_contract_define"
+type: "pattern"
+version: "1.0.0"
+description: "A best-practice pattern for defining a detailed API contract between a backend and frontend. Use this as a reference when asked to design APIs."
+entrypoint: "template.md"
+keywords: ["api", "contract", "rest", "dto", "backend", "frontend"]

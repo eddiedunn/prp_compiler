@@ -1,0 +1,6 @@
+name: "python_best_practices"
+type: "knowledge"
+version: "1.0.0"
+description: "A comprehensive guide to best practices for modern Python development, including project structure, dependency management with uv, testing with pytest, and style conventions with ruff."
+entrypoint: "content.md"
+keywords: ["python", "uv", "pytest", "ruff", "pydantic", "architecture"]
