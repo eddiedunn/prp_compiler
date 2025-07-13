@@ -80,12 +80,18 @@ def test_golden_prp(
     # Arrange
     # 1. Mock loaders and configurations
     mock_loader_instance = mock_loader_class.return_value
-    # Mock the loader to return a valid schema when get_primitive_content is called.
-    # This is what the compile() function actually calls.
-    mock_loader_instance = mock_loader_class.return_value
-    # Mock the loader to return a valid schema when get_primitive_content is called.
-    # This is what the compile() function actually calls.
-    mock_loader_instance.get_primitive_content.return_value = json.dumps({"type": "object"})
+    # The old mock returned a JSON string for all calls to get_primitive_content,
+    # which caused a KeyError when the orchestrator tried to format the "strategy" content.
+    # This new mock correctly returns a strategy template or a schema based on the type.
+    def get_content_side_effect(primitive_type, name):
+        if primitive_type == "strategies":
+            # A minimal strategy template that uses the expected variables.
+            return "Goal: {user_goal}\nHistory: {history}\nTools: {tools_json_schema}"
+        elif primitive_type == "schemas":
+            return json.dumps({"type": "object"})
+        return ""  # Default for other types like patterns
+
+    mock_loader_instance.get_primitive_content.side_effect = get_content_side_effect
     mock_knowledge_store_instance = mock_knowledge_store_class.return_value
     mock_knowledge_store_instance.retrieve.return_value = ["mock knowledge"]
 
