@@ -1,0 +1,6 @@
+name: "simple_feature_strategy"
+type: "strategy"
+version: "1.0.0"
+description: "A straightforward strategy for generating a standard feature PRP. Focuses on understanding the codebase first, then supplementing with knowledge."
+entrypoint: "template.md"
+keywords: ["default", "feature", "standard"]

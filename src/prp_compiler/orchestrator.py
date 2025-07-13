@@ -90,7 +90,11 @@ class Orchestrator:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
     def run(
-        self, user_goal: str, constitution: str, max_steps: int = 10
+        self,
+        user_goal: str,
+        constitution: str,
+        max_steps: int = 10,
+        strategy_name: str | None = None,
     ) -> Tuple[str, str]:
         """Drives the main ReAct loop and assembles the final context."""
         cache_key = self._compute_cache_key(user_goal)
@@ -99,15 +103,32 @@ class Orchestrator:
             if cached:
                 return cached["schema_choice"], cached["final_context"]
 
+        # STEP 1: Select Strategy
+        if strategy_name:
+            chosen_strategy_name = strategy_name
+        else:
+            chosen_strategy_name = self.planner.select_strategy(user_goal, constitution)
+
+        typer.secho(f"Selected strategy: {chosen_strategy_name}", fg=typer.colors.BLUE)
+
+        strategy_content = self.primitive_loader.get_primitive_content(
+            "strategies", chosen_strategy_name
+        )
+
         history = [
-            "Observation: No observation yet. Start by thinking about the user's goal."
+            "Observation: ..."
         ]
         final_context_parts = list(history)
         final_plan_args = None
 
         for i in range(max_steps):
             try:
-                step = self.planner.plan_step(user_goal, constitution, history)
+                step = self.planner.plan_step(
+                    user_goal,
+                    constitution,
+                    strategy_content,
+                    history,
+                )
 
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"

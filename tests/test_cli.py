@@ -14,7 +14,7 @@ def mock_orchestrator(monkeypatch):
         def __init__(self, loader, knowledge_store):
             pass
 
-        def run(self, goal, constitution):
+        def run(self, goal, constitution, max_steps=10, strategy_name=None):
             return (
                 "test_schema",
                 "dummy context",

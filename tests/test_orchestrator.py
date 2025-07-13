@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -93,30 +93,21 @@ def test_run_captures_finish_args_and_assembles_context(
     """
     # Arrange
     mock_planner_instance = MockPlannerAgent.return_value
+    mock_planner_instance.select_strategy.return_value = "simple"
 
-    # Define the sequence of steps the mock planner will return
     steps = [
-        # First step: a simple action
         ReActStep(
             thought=Thought(
-                reasoning="I need to see what files are in the directory.",
-                criticism="This is a good first step.",
-                next_action=Action(
-                    tool_name="list_directory", arguments={"directory_path": "."}
-                )
+                reasoning="look", criticism="none",
+                next_action=Action("list_directory", {"directory_path": "."})
             )
         ),
-        # Final step: the finish action with the plan details
         ReActStep(
             thought=Thought(
-                reasoning="I have enough information to finish.",
-                criticism="The plan is complete.",
+                reasoning="done", criticism="none",
                 next_action=Action(
                     tool_name="finish",
-                    arguments={
-                        "schema_choice": "test_schema",
-                        "pattern_references": ["test_pattern"]
-                    }
+                    arguments={"schema_choice": "test_schema", "pattern_references": ["test_pattern"]}
                 )
             )
         )
@@ -136,12 +127,20 @@ def test_run_captures_finish_args_and_assembles_context(
     # Act
     schema_choice, final_context = orchestrator.run("test goal", "test constitution")
 
+    mock_planner_instance.select_strategy.assert_called_once_with("test goal", "test constitution")
+    mock_planner_instance.plan_step.assert_any_call(
+        "test goal",
+        "test constitution",
+        orchestrator.primitive_loader.get_primitive_content.return_value,
+        ANY,
+    )
+
     # Assert
     # 1. Check that the correct schema choice is returned
     assert schema_choice == "test_schema"
 
     # 2. Check that the final context contains all the parts of the loop
-    assert "Thought: I need to see what files are in the directory." in final_context
+    assert "Thought: look" in final_context
     assert "Action: list_directory({'directory_path': '.'})" in final_context
     assert "Observation: file1.txt" in final_context
     assert "Action: finish({" in final_context  # Check that finish was called
