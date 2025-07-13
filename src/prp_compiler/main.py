@@ -32,6 +32,9 @@ def compile(
     cache_db_path: Path = typer.Option(
         "result_cache.sqlite", help="Path to the result cache database."
     ),
+    strategy: str = typer.Option(
+        None, help="Manually specify a strategy name to use."
+    ),
 ):
     """Compiles a high-fidelity PRP from a user goal."""
     try:
@@ -59,7 +62,12 @@ def compile(
 
         typer.echo("2. Running Planner Agent to gather context...")
         orchestrator = Orchestrator(loader, knowledge_store, result_cache)
-        schema_choice, final_context = orchestrator.run(goal, constitution)
+        chosen_strategy = strategy
+        schema_choice, final_context = orchestrator.run(
+            goal,
+            constitution,
+            strategy_name=chosen_strategy,
+        )
 
         # Load the actual schema content based on the choice from the planner
         schema_content_str = loader.get_primitive_content("schemas", schema_choice)
