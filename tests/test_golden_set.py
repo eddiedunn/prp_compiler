@@ -101,6 +101,9 @@ def test_golden_prp(
 
     mock_llm_instance = mock_generative_model.return_value
     mock_llm_instance.generate_content.side_effect = [
+        make_mock_planner_response(
+            "select_strategy", {"strategy_name": "simple_feature_strategy"}
+        ),
         mock_planner_step1,
         mock_planner_step2,
         mock_synthesizer_response,
@@ -116,6 +119,8 @@ def test_golden_prp(
             vector_db_path=Path(tmp_path / "chroma_db"),
             constitution_path=Path("non_existent_file.md"),
             cache_db_path=Path(tmp_path / "cache.sqlite"),
+            strategy=None,
+            plan_file=None,
         )
         # We expect this to succeed
         exit_code = 0
