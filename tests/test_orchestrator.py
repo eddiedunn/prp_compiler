@@ -119,9 +119,12 @@ def test_run_captures_finish_args_and_assembles_context(
 
     # The loader is still needed for schemas and patterns
     mock_loader = MagicMock()
+    strategy_content = "This is a simple strategy."
     mock_loader.get_primitive_content.side_effect = [
-        '{"title": "Test Schema"}',  # schema
-        'This is a test pattern.'   # pattern
+        strategy_content,             # First call for the strategy
+        '{"title": "Test Schema"}',  # Second call for the schema
+        'This is a test pattern.'     # Third call for the pattern
+
     ]
     mock_loader.primitives = {
         "strategies": {"simple": {"name": "simple", "entrypoint": "template.md", "base_path": "/tmp"}}
@@ -135,16 +138,15 @@ def test_run_captures_finish_args_and_assembles_context(
         "test goal", "test constitution"
     )
 
-    mock_planner_instance.select_strategy.assert_called_once_with("test goal", "test constitution")
+    mock_planner_instance.select_strategy.assert_called_once_with(
+        "test goal", "test constitution"
+    )
     mock_planner_instance.plan_step.assert_any_call(
         "test goal",
         "test constitution",
-        {
-            "name": "simple",
-            "entrypoint": "template.md",
-            "base_path": "/tmp",
-            "template": orchestrator.primitive_loader.get_primitive_content.return_value,
-        },
+
+        strategy_content,
+
         ANY,
     )
 
