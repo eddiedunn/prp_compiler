@@ -26,10 +26,10 @@ def mock_configure_gemini(monkeypatch):
 @pytest.fixture(scope="session")
 def temp_agent_dir(tmp_path_factory):
     """
-    Creates a temporary agent_capabilities directory with dummy files for
+    Creates a temporary agent_primitives directory with dummy files for
     session-wide use.
     """
-    base_path = tmp_path_factory.mktemp("agent_capabilities_session")
+    base_path = tmp_path_factory.mktemp("agent_primitives_session")
 
     # Define paths
     schemas_path = base_path / "schemas"
