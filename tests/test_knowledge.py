@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from src.prp_compiler.knowledge import KnowledgeStore
+from src.prp_compiler.knowledge import ChromaKnowledgeStore
 
 
 def create_temp_knowledge_primitive(tmp_path):
@@ -37,7 +37,7 @@ def test_knowledge_store_build_and_retrieve(tmp_path):
     ):
         mock_chroma_inst = MagicMock()
         mock_chroma.from_documents.return_value = mock_chroma_inst
-        store = KnowledgeStore(persist_dir)
+        store = ChromaKnowledgeStore(persist_dir)
         store.build([primitive])
         mock_chroma.from_documents.assert_called()
         # Test retrieve

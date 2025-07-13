@@ -53,3 +53,17 @@ prp-compiler build-knowledge --primitives-path agent_primitives --vector-db-path
 ```
 
 This command (re)builds the vector database used for retrieval-augmented generation (RAG) from all curated knowledge primitives.
+### Run as a Service
+
+```bash
+prp-compiler serve --workers 4
+```
+
+This starts a simple async queue processor that can handle multiple PRP compilation jobs concurrently.
+
+## Contributing
+
+We welcome new primitives and improvements! See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the curation workflow and development process.
+
+For an in-depth look at the system architecture, see [ARCHITECTURE.md](ARCHITECTURE.md).
+

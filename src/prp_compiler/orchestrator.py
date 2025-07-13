@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Tuple
 
 from .agents.planner import Action, PlannerAgent
-from .knowledge import KnowledgeStore
+from .knowledge import VectorStore
+from .cache import ResultCache
 from .primitives import PrimitiveLoader
 
 
@@ -21,10 +22,14 @@ class Orchestrator:
     """
 
     def __init__(
-        self, primitive_loader: PrimitiveLoader, knowledge_store: KnowledgeStore
+        self,
+        primitive_loader: PrimitiveLoader,
+        knowledge_store: VectorStore,
+        result_cache: "ResultCache | None" = None,
     ):
         self.primitive_loader = primitive_loader
         self.knowledge_store = knowledge_store
+        self.result_cache = result_cache
         self.planner = PlannerAgent(self.primitive_loader)
 
     def execute_action(self, action: Action) -> str:
@@ -70,6 +75,12 @@ class Orchestrator:
         self, user_goal: str, constitution: str, max_steps: int = 10
     ) -> Tuple[str, str]:
         """Drives the main ReAct loop and assembles the final context."""
+        cache_key = self._compute_cache_key(user_goal)
+        if self.result_cache:
+            cached = self.result_cache.get(cache_key)
+            if cached:
+                return cached["schema_choice"], cached["final_context"]
+
         history = [
             "Observation: No observation yet. Start by thinking about the user's goal."
         ]
@@ -134,10 +145,24 @@ class Orchestrator:
             pattern_content = self.primitive_loader.get_primitive_content(
                 "patterns", pattern_ref
             )
-            final_context_parts.append(
-                f"Pattern: {pattern_ref}\n{pattern_content}"
-            )
+            final_context_parts.append(f"Pattern: {pattern_ref}\n{pattern_content}")
 
         final_context = "\n\n".join(final_context_parts)
+        if self.result_cache:
+            self.result_cache.set(
+                cache_key,
+                {"schema_choice": schema_choice, "final_context": final_context},
+            )
         return (schema_choice, final_context)
 
+    def _compute_cache_key(self, user_goal: str) -> str:
+        """Generate a cache key from the goal and loaded primitives."""
+        import hashlib
+
+        parts = [user_goal]
+        for p_type, prims in self.primitive_loader.primitives.items():
+            for name, manifest in prims.items():
+                version = manifest.get("version", "")
+                parts.append(f"{p_type}:{name}:{version}")
+        joined = "|".join(sorted(parts))
+        return hashlib.sha256(joined.encode()).hexdigest()
