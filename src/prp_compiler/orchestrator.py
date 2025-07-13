@@ -1,4 +1,6 @@
 import importlib
+import re
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Tuple
@@ -6,6 +8,7 @@ from typing import Tuple
 import typer
 
 from .agents.planner import Action, PlannerAgent
+from .config import ALLOWED_SHELL_COMMANDS
 from .knowledge import VectorStore
 from .cache import ResultCache
 from .primitives import PrimitiveLoader
@@ -42,6 +45,7 @@ class Orchestrator:
         Results are cached based on the tool name and arguments to avoid
         repeating expensive operations across runs.
         """
+        typer.secho(f"▶️  Executing Action: {action.tool_name}", fg=typer.colors.YELLOW)
         cache_key = self._compute_action_cache_key(action)
         if self.result_cache:
             cached = self.result_cache.get(cache_key)
@@ -198,17 +202,19 @@ class Orchestrator:
             )
 
         schema_choice = final_plan_args.get("schema_choice", "")
-        schema_content = self.primitive_loader.get_primitive_content(
-            "schemas", schema_choice
-        )
-        context.add_entry("Schema", f"{schema_choice}\n{schema_content}")
+
+        final_context_parts = []
+        final_context_parts.append("\n\n".join(context.as_list()))
 
         for pattern_ref in final_plan_args.get("pattern_references", []):
             pattern_content = self.primitive_loader.get_primitive_content(
                 "patterns", pattern_ref
             )
-            context.add_entry("Pattern", f"{pattern_ref}\n{pattern_content}")
-        final_context = context.get_history_str()
+            resolved_pattern = self._resolve_dynamic_content(pattern_content)
+            final_context_parts.append(f"Pattern: {pattern_ref}\n{resolved_pattern}")
+
+        final_context = "\n\n".join(final_context_parts)
+
         if self.result_cache:
             self.result_cache.set(
                 cache_key,
@@ -238,3 +244,30 @@ class Orchestrator:
             "args": action.arguments,
         }
         return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+    def _resolve_callback(self, match: re.Match) -> str:
+        """Helper for regex substitution in _resolve_dynamic_content."""
+        token = match.group(1)
+        content = match.group(2)
+        if token == "!":
+            parts = shlex.split(content)
+            if not parts:
+                return ""
+            if parts[0] not in ALLOWED_SHELL_COMMANDS:
+                return f"[DISALLOWED] Command '{parts[0]}' not allowed"
+            try:
+                result = subprocess.run(parts, capture_output=True, text=True, check=True)
+                return result.stdout.strip()
+            except Exception as e:
+                return f"[ERROR] Command '{content}' failed: {e}"
+        if token == "@":
+            path = Path(content)
+            if not path.is_file():
+                return f"[ERROR] File '{content}' not found"
+            return path.read_text().strip()
+        return match.group(0)
+
+    def _resolve_dynamic_content(self, text: str) -> str:
+        """Resolves !() shell commands and @() file references in a string."""
+        pattern = re.compile(r"([!@])\(([^)]+)\)")
+        return pattern.sub(self._resolve_callback, text)

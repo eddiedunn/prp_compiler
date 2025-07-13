@@ -1,0 +1,5 @@
+name: "detailed_feature_strategy"
+type: "strategy"
+version: "1.0.0"
+description: "A detailed, multi-phase strategy for complex features. Guides the agent through codebase analysis, knowledge retrieval, and external research."
+entrypoint: "template.md"

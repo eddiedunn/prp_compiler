@@ -129,11 +129,13 @@ class PlannerAgent(BaseAgent):
         history: List[str],
     ) -> ReActStep:
         """Perform a single ReAct planning step using the provided strategy template."""
-        prompt = constitution + "\n\n" + strategy_content.format(
-            user_goal=user_goal,
-            tools_json_schema=json.dumps(self.actions_schema, indent=2),
-            history="\n".join(history),
-        )
+        variables = {"user_goal": user_goal, "tools_json_schema": json.dumps(self.actions_schema, indent=2), "history": "\n".join(history)}
+        try:
+            strategy_prompt = strategy_content.format(**variables)
+        except KeyError as e:
+            raise ValueError(f"Missing template variable {e} in strategy template")
+        prompt = constitution + "\n\n" + strategy_prompt
+
         response = self.model.generate_content(prompt, tools=self.actions_schema)
         fc_part = response.candidates[0].content.parts[0]
         if not hasattr(fc_part, "function_call"):

@@ -70,3 +70,5 @@ This loop continues until the agent concludes it has sufficient context to gener
 
 ### 5. The Synthesizer Agent
 A simpler agent that receives the final, rich context from the Planner and a chosen output schema. Its sole job is to arrange the context into the structure defined by the schema, producing a final, validated JSON output.
+
+The orchestrator caches results of expensive steps and resolves dynamic content references before synthesis.

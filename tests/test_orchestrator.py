@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
+import subprocess
 import pytest
 
 from src.prp_compiler.models import Action, ReActStep, Thought
@@ -165,3 +166,29 @@ def test_run_captures_finish_args_and_assembles_context(
     # 3. Check that the schema and pattern content were appended correctly
     assert "Schema: test_schema\n{\"title\": \"Test Schema\"}" in final_context
     assert "Pattern: test_pattern\nThis is a test pattern." in final_context
+
+@patch("subprocess.run")
+def test_resolve_dynamic_content_allowed_command(mock_run, mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_run.return_value = subprocess.CompletedProcess(args=["echo"], returncode=0, stdout="hello\n")
+    result = orchestrator._resolve_dynamic_content("Value: !(echo hello)")
+    assert result == "Value: hello"
+
+@patch("subprocess.run")
+def test_resolve_dynamic_content_command_failure(mock_run, mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_run.side_effect = subprocess.CalledProcessError(1, ["ls"], "error")
+    result = orchestrator._resolve_dynamic_content("Files: !(ls missing)")
+    assert "[ERROR]" in result
+
+
+def test_resolve_dynamic_content_disallowed_command(mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    result = orchestrator._resolve_dynamic_content("Bad: !(rm -rf /)")
+    assert "[DISALLOWED]" in result
+
+
+def test_resolve_dynamic_content_file_not_found(mock_knowledge_store):
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    result = orchestrator._resolve_dynamic_content("Include: @(/nope.txt)")
+    assert "[ERROR]" in result
