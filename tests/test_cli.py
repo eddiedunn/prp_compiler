@@ -75,7 +75,9 @@ def mock_knowledge_store(monkeypatch):
         def load(self):
             pass
 
-    monkeypatch.setattr("src.prp_compiler.main.KnowledgeStore", DummyKnowledgeStore)
+    monkeypatch.setattr(
+        "src.prp_compiler.main.ChromaKnowledgeStore", DummyKnowledgeStore
+    )
 
 
 def test_cli_compile_command(

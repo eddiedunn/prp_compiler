@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Protocol
 
 from langchain.text_splitter import MarkdownHeaderTextSplitter
 from langchain_community.embeddings import FakeEmbeddings
@@ -8,7 +8,17 @@ from langchain_community.vectorstores import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 
-class KnowledgeStore:
+class VectorStore(Protocol):
+    """Simple protocol for pluggable vector stores."""
+
+    def build(self, knowledge_primitives: List[Dict[str, Any]]) -> None: ...
+
+    def load(self) -> None: ...
+
+    def retrieve(self, query: str, k: int = 5) -> List[str]: ...
+
+
+class ChromaKnowledgeStore:
     """
     Manages the creation, loading, and querying of a vector database
     for Retrieval-Augmented Generation (RAG).
@@ -82,9 +92,8 @@ class KnowledgeStore:
         """Retrieves the k most relevant document chunks for a given query."""
         if not self.db:
             raise RuntimeError(
-            "KnowledgeStore is not built or loaded. "
-            "Call .build() or .load() first."
-        )
+                "KnowledgeStore is not built or loaded. Call .build() or .load() first."
+            )
         print(f"Retrieving knowledge for query: '{query}'")
         docs = self.db.similarity_search(query, k=k)
         return [doc.page_content for doc in docs]

@@ -8,6 +8,7 @@ from src.prp_compiler.main import compile
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
+
 def find_golden_cases() -> list[tuple[str, Path, Path]]:
     """Return a list of (name, goal_path, expected_path) tuples for testing."""
     cases: list[tuple[str, Path, Path]] = []
@@ -21,6 +22,7 @@ def find_golden_cases() -> list[tuple[str, Path, Path]]:
             if goal_md.exists() and expected_json.exists():
                 cases.append((subdir.name, goal_md, expected_json))
     return cases
+
 
 # Helper to create a valid mock for the PlannerAgent.
 # This version ensures `fc.args` is a dict, as the planner expects.
@@ -45,6 +47,7 @@ def mock_primitive_loader():
 
 CASES = find_golden_cases()
 
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "name, goal_md, expected_json_path",
@@ -52,7 +55,7 @@ CASES = find_golden_cases()
     ids=[case[0] for case in CASES],
 )
 @patch("src.prp_compiler.main.configure_gemini")
-@patch("src.prp_compiler.main.KnowledgeStore")
+@patch("src.prp_compiler.main.ChromaKnowledgeStore")
 @patch("src.prp_compiler.main.PrimitiveLoader")
 @patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel")
 def test_golden_prp(
