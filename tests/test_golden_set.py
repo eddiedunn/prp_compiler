@@ -32,7 +32,10 @@ def make_mock_planner_response(tool_name, args):
     fc.args = args  # The planner agent's `dict(fc.args)` works on a real dict.
     part = MagicMock(function_call=fc)
     candidate = MagicMock(content=MagicMock(parts=[part]))
-    return MagicMock(candidates=[candidate])
+    # Add a .text attribute to prevent TypeErrors if it's accessed by mistake
+    # by a part of the system that expects text (like the synthesizer).
+    response = MagicMock(candidates=[candidate], text="")
+    return response
 
 
 @pytest.fixture
