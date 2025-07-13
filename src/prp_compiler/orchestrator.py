@@ -1,4 +1,5 @@
 import importlib
+import subprocess
 from pathlib import Path
 from typing import Tuple
 
@@ -8,6 +9,7 @@ from .agents.planner import Action, PlannerAgent
 from .knowledge import VectorStore
 from .cache import ResultCache
 from .primitives import PrimitiveLoader
+from .context import ContextManager
 
 
 def load_constitution(root_path: Path) -> str:
@@ -61,6 +63,25 @@ class Orchestrator:
             if not action_manifest:
                 raise ValueError(f"Action '{action.tool_name}' not found in manifest.")
 
+            allowed_cmds = action_manifest.get("allowed_shell_commands")
+            if allowed_cmds is not None:
+                cmd = action.arguments.get("command")
+                if cmd and cmd.split()[0] not in allowed_cmds:
+                    raise PermissionError(
+                        f"Command '{cmd}' not allowed for action '{action.tool_name}'"
+                    )
+
+            # Install action-specific dependencies if specified
+            req_path = Path(action_manifest["base_path"]) / "requirements.txt"
+            if req_path.is_file():
+                subprocess.run([
+                    "uv",
+                    "pip",
+                    "install",
+                    "-r",
+                    str(req_path),
+                ], check=False)
+
             # The entrypoint is now 'module.py:function'
             module_str, function_str = action_manifest["entrypoint"].split(":")
             # The base_path from the manifest gives us the versioned directory
@@ -111,14 +132,19 @@ class Orchestrator:
 
         typer.secho(f"Selected strategy: {chosen_strategy_name}", fg=typer.colors.BLUE)
 
+        strategy_manifest = (
+            self.primitive_loader.primitives.get("strategies", {}).get(chosen_strategy_name)
+        )
+        if not strategy_manifest:
+            raise ValueError(f"Strategy '{chosen_strategy_name}' not found in manifest.")
         strategy_content = self.primitive_loader.get_primitive_content(
             "strategies", chosen_strategy_name
         )
+        strategy = dict(strategy_manifest)
+        strategy["template"] = strategy_content
 
-        history = [
-            "Observation: ..."
-        ]
-        final_context_parts = list(history)
+        context = ContextManager(self.planner.model)
+        context.add("Observation: ...")
         final_plan_args = None
 
         for i in range(max_steps):
@@ -126,20 +152,20 @@ class Orchestrator:
                 step = self.planner.plan_step(
                     user_goal,
                     constitution,
-                    strategy_content,
-                    history,
+                    strategy,
+                    context.history,
                 )
 
                 thought_text = (
                     f"Thought: {step.thought.reasoning}\n"
                     f"Critique: {step.thought.criticism}"
                 )
-                final_context_parts.append(thought_text)
+                context.add(thought_text)
                 typer.secho(f"\U0001F914 {thought_text}", fg=typer.colors.CYAN)
 
                 action = step.thought.next_action
                 action_text = f"Action: {action.tool_name}({action.arguments})"
-                final_context_parts.append(action_text)
+                context.add(action_text)
                 typer.secho(f"\u25B6\uFE0F {action_text}", fg=typer.colors.MAGENTA)
 
                 if action.tool_name == "finish":
@@ -148,25 +174,22 @@ class Orchestrator:
 
                 observation = self.execute_action(action)
                 observation_text = f"Observation: {observation}"
-                final_context_parts.append(observation_text)
+                context.add(observation_text)
                 typer.secho(f"\U0001F440 {observation_text}", fg=typer.colors.GREEN)
 
-                # Update history for the next step
-                history.append(thought_text)
-                history.append(action_text)
-                history.append(observation_text)
+                # History is managed by the ContextManager
 
             except Exception as e:
                 return (
                     "",
                     f"[ERROR] Exception in Orchestrator.run: {e}\n\n"
-                    + "\n\n".join(final_context_parts),
+                    + "\n\n".join(context.as_list()),
                 )
         else:  # This 'else' belongs to the 'for' loop
             return (
                 "",
                 "[ERROR] Planner did not finish within max_steps.\n\n"
-                + "\n\n".join(final_context_parts),
+                + "\n\n".join(context.as_list()),
             )
 
         # After the loop, assemble the final context
@@ -174,22 +197,21 @@ class Orchestrator:
             return (
                 "",
                 "[ERROR] Planner did not finish with a final plan.\n\n"
-                + "\n\n".join(final_context_parts),
+                + "\n\n".join(context.as_list()),
             )
 
         schema_choice = final_plan_args.get("schema_choice", "")
         schema_content = self.primitive_loader.get_primitive_content(
             "schemas", schema_choice
         )
-        final_context_parts.append(f"Schema: {schema_choice}\n{schema_content}")
+        context.add(f"Schema: {schema_choice}\n{schema_content}")
 
         for pattern_ref in final_plan_args.get("pattern_references", []):
             pattern_content = self.primitive_loader.get_primitive_content(
                 "patterns", pattern_ref
             )
-            final_context_parts.append(f"Pattern: {pattern_ref}\n{pattern_content}")
-
-        final_context = "\n\n".join(final_context_parts)
+            context.add(f"Pattern: {pattern_ref}\n{pattern_content}")
+        final_context = "\n\n".join(context.as_list())
         if self.result_cache:
             self.result_cache.set(
                 cache_key,

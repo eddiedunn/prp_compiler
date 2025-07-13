@@ -26,10 +26,14 @@ def test_execute_action_retrieve_knowledge(MockPlannerAgent, mock_knowledge_stor
     assert result == "ChunkA\nChunkB"
 
 
+@patch("subprocess.run")
 @patch("importlib.util.module_from_spec")
 @patch("importlib.util.spec_from_file_location")
 def test_execute_action_dynamically_imports_and_runs_function(
-    mock_spec_from_file_location, mock_module_from_spec, mock_knowledge_store
+    mock_spec_from_file_location,
+    mock_module_from_spec,
+    mock_subprocess_run,
+    mock_knowledge_store,
 ):
     """
     Tests that execute_action correctly loads and runs an action's Python
@@ -64,6 +68,7 @@ def test_execute_action_dynamically_imports_and_runs_function(
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store)
     action = Action(tool_name=action_name, arguments={"path": "/tmp"})
+    mock_subprocess_run.return_value = None
 
     # Act
     result = orchestrator.execute_action(action)
@@ -80,6 +85,7 @@ def test_execute_action_dynamically_imports_and_runs_function(
 
     # 3. Verify the result is the string representation of the function's return value
     assert result == str({"status": "success"})
+    mock_subprocess_run.assert_called()
 
 
 @patch("src.prp_compiler.orchestrator.PlannerAgent")
@@ -118,7 +124,11 @@ def test_run_captures_finish_args_and_assembles_context(
         strategy_content,             # First call for the strategy
         '{"title": "Test Schema"}',  # Second call for the schema
         'This is a test pattern.'     # Third call for the pattern
+
     ]
+    mock_loader.primitives = {
+        "strategies": {"simple": {"name": "simple", "entrypoint": "template.md", "base_path": "/tmp"}}
+    }
 
     orchestrator = Orchestrator(mock_loader, mock_knowledge_store, MagicMock())
     orchestrator.execute_action = MagicMock(return_value="file1.txt")
@@ -134,7 +144,9 @@ def test_run_captures_finish_args_and_assembles_context(
     mock_planner_instance.plan_step.assert_any_call(
         "test goal",
         "test constitution",
+
         strategy_content,
+
         ANY,
     )
 

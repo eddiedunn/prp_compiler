@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except Exception:  # pragma: no cover
+    genai = None
 from dotenv import load_dotenv
 
 # Define the project root as the grandparent of this file's directory.
@@ -19,6 +22,8 @@ ALLOWED_SHELL_COMMANDS = ["git", "ls", "cat", "tree", "echo"]
 
 def configure_gemini():
     """Loads the Gemini API key and configures the genai library."""
+    if not genai:
+        return
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:

@@ -3,6 +3,7 @@ type: "action"
 version: "1.0.0"
 description: "Reads the entire content of a single file from the local filesystem. Use this to understand specific files mentioned in a goal."
 entrypoint: "read_file.py:run"
+allowed_shell_commands: []
 inputs_schema:
   type: "object"
   properties:

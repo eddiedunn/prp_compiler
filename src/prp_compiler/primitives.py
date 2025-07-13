@@ -1,7 +1,56 @@
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import yaml
+try:
+    import yaml
+except Exception:  # pragma: no cover - allow running without PyYAML
+    yaml = None
+
+def _simple_yaml_load(text: str) -> Dict[str, Any]:
+    """Very small YAML loader for our manifest format."""
+    data: Dict[str, Any] = {}
+    current_stack: list[tuple[int, Any]] = [(0, data)]
+
+    def convert(value: str) -> Any:
+        if value.startswith("[") and value.endswith("]"):
+            return [v.strip().strip('"') for v in value[1:-1].split("") if v.strip()]
+        if value.isdigit():
+            return int(value)
+        return value.strip('"')
+
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if stripped.startswith("- "):
+            key, container = current_stack[-1]
+            if not isinstance(container, list):
+                container_list = []
+                current_stack[-1] = (key, container_list)
+                if isinstance(current_stack[-2][1], dict):
+                    current_stack[-2][1][key] = container_list
+            else:
+                container_list = container
+            container_list.append(convert(stripped[2:]))
+            continue
+        if ":" in stripped:
+            k, v = stripped.split(":", 1)
+            k = k.strip()
+            v = v.strip()
+            while current_stack and indent <= current_stack[-1][0]:
+                current_stack.pop()
+            if not current_stack:
+                current_stack.append((0, data))
+            parent = current_stack[-1][1]
+            if v == "":
+                new_obj: Dict[str, Any] | list[Any] = {}
+                parent[k] = new_obj
+                current_stack.append((indent, k))
+                current_stack.append((indent + 2, new_obj))
+            else:
+                parent[k] = convert(v)
+    return data
 from semantic_version import Version  # type: ignore
 
 
@@ -48,7 +97,11 @@ class PrimitiveLoader:
                     manifest_path = version_path / "manifest.yml"
                     if manifest_path.is_file():
                         with open(manifest_path, "r") as f:
-                            manifest = yaml.safe_load(f)
+                            text = f.read()
+                            if yaml:
+                                manifest = yaml.safe_load(text)
+                            else:
+                                manifest = _simple_yaml_load(text)
                             manifest["version"] = str(current_version)
                             manifest["base_path"] = str(version_path.resolve())
                             latest_version = current_version
