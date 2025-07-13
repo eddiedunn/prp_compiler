@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # Define default paths relative to the project root.
-DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_capabilities/tools"
-DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_capabilities/knowledge"
-DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_capabilities/schemas"
+DEFAULT_TOOLS_PATH = PROJECT_ROOT / "agent_primitives/actions"
+DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_primitives/knowledge"
+DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_primitives/schemas"
 DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
 
 # Allowlist for shell commands to prevent arbitrary code execution.
