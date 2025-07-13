@@ -13,6 +13,19 @@ def mock_knowledge_store():
     return MagicMock()
 
 
+@patch("src.prp_compiler.orchestrator.PlannerAgent")
+def test_execute_action_retrieve_knowledge(MockPlannerAgent, mock_knowledge_store):
+    """execute_action should return joined chunks from the knowledge store."""
+    orchestrator = Orchestrator(MagicMock(primitives={}), mock_knowledge_store)
+    mock_knowledge_store.retrieve.return_value = ["ChunkA", "ChunkB"]
+
+    action = Action(tool_name="retrieve_knowledge", arguments={"query": "foo"})
+    result = orchestrator.execute_action(action)
+
+    mock_knowledge_store.retrieve.assert_called_once_with("foo")
+    assert result == "ChunkA\nChunkB"
+
+
 @patch("importlib.util.module_from_spec")
 @patch("importlib.util.spec_from_file_location")
 def test_execute_action_dynamically_imports_and_runs_function(
