@@ -3,6 +3,7 @@ type: "action"
 version: "1.0.0"
 description: "Summarize a block of text using the Gemini model."
 entrypoint: "summarize_text.py:run"
+allowed_shell_commands: []
 inputs_schema:
   type: "object"
   properties:

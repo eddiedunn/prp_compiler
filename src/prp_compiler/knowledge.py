@@ -2,10 +2,16 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Protocol
 
-from langchain.text_splitter import MarkdownHeaderTextSplitter
-from langchain_community.embeddings import FakeEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+try:
+    from langchain.text_splitter import MarkdownHeaderTextSplitter
+    from langchain_community.embeddings import FakeEmbeddings
+    from langchain_community.vectorstores import Chroma
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+except Exception:  # pragma: no cover - allow minimal test environment
+    MarkdownHeaderTextSplitter = object  # type: ignore
+    FakeEmbeddings = object  # type: ignore
+    Chroma = object  # type: ignore
+    GoogleGenerativeAIEmbeddings = object  # type: ignore
 
 
 class VectorStore(Protocol):

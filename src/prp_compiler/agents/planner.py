@@ -16,24 +16,6 @@ Available Strategies:
 Based on the user's goal, which strategy is most appropriate? Call the `select_strategy` function with the name of your chosen strategy.
 """
 
-REACT_PROMPT_TEMPLATE = """
-You are an expert AI engineering architect. Your task is to build a context buffer by reasoning and acting in a loop.
-
-**Your Overarching Strategy:**
----
-{strategy_content}
----
-
-**Your Goal:** "{user_goal}"
-
-**Available Tools:**
-{tools_json_schema}
-
-**History (last entry is the most recent observation):**
-{history}
-
-Based on your strategy and the history, what is your next thought and action? You must respond by calling one of the available tool functions.
-"""
 
 
 class PlannerAgent(BaseAgent):
@@ -139,13 +121,22 @@ class PlannerAgent(BaseAgent):
             raise ValueError("Planner failed to select a strategy.")
         return fc.args["strategy_name"]
 
-    def plan_step(self, user_goal: str, constitution: str, strategy_content: str, history: List[str]) -> ReActStep:
-        prompt = constitution + "\n\n" + REACT_PROMPT_TEMPLATE.format(
-            user_goal=user_goal,
-            strategy_content=strategy_content,
-            tools_json_schema=json.dumps(self.actions_schema, indent=2),
-            history="\n".join(history),
-        )
+    def plan_step(self, user_goal: str, constitution: str, strategy: Dict[str, Any], history: List[str]) -> ReActStep:
+        """Perform a single ReAct planning step using the provided strategy."""
+        template = strategy.get("template", "")
+        variables = {
+            "user_goal": user_goal,
+            "tools_json_schema": json.dumps(self.actions_schema, indent=2),
+            "history": "\n".join(history),
+            "finish_criteria": strategy.get("finish_criteria", ""),
+            "required_context_pieces": strategy.get("required_context_pieces", ""),
+        }
+        try:
+            strategy_prompt = template.format(**variables)
+        except KeyError as e:
+            raise ValueError(f"Missing template variable {e} in strategy {strategy.get('name')}")
+
+        prompt = constitution + "\n\n" + strategy_prompt
         response = self.model.generate_content(prompt, tools=self.actions_schema)
         fc_part = response.candidates[0].content.parts[0]
         if not hasattr(fc_part, "function_call"):
