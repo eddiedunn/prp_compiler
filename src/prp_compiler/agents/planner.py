@@ -65,6 +65,26 @@ class PlannerAgent(BaseAgent):
             }
         )
 
+        # Provide a built-in action for retrieving information from the
+        # KnowledgeStore. This does not rely on any primitives on disk so the
+        # planner always has access to it.
+        actions.append(
+            {
+                "name": "retrieve_knowledge",
+                "description": "Search the knowledge store for relevant information.",
+                "inputs_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query to retrieve information for.",
+                        }
+                    },
+                    "required": ["query"],
+                },
+            }
+        )
+
         gemini_tools = []
         for action in actions:
             # Start with the base schema from the manifest

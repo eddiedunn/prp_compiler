@@ -9,16 +9,8 @@ from src.prp_compiler.models import ReActStep
 @pytest.fixture
 def mock_primitive_loader():
     loader = MagicMock()
-    loader.get_all.return_value = [
-        {
-            "name": "retrieve_knowledge",
-            "description": "desc",
-            "inputs_schema": {
-                "type": "object",
-                "properties": {"query": {"type": "string"}},
-            },
-        }
-    ]
+    # No actions returned; retrieve_knowledge is built-in to the planner.
+    loader.get_all.return_value = []
     return loader
 
 def make_mock_gemini_response(tool_name, args):
@@ -69,4 +61,17 @@ def test_plan_step_returns_react_step(
     prompt = call_args[0]
     assert "test goal" in prompt
     assert "Observation: It all starts here." in prompt
+
+
+@patch("src.prp_compiler.agents.base_agent.genai.GenerativeModel")
+def test_tools_schema_includes_retrieve_knowledge(mock_generative_model, mock_primitive_loader):
+    """Planner should always include the retrieve_knowledge tool."""
+    planner = PlannerAgent(mock_primitive_loader)
+
+    tool_names = [tool["name"] for tool in planner.tools_schema]
+    assert "retrieve_knowledge" in tool_names
+
+    # Ensure the query parameter is present
+    tool = next(t for t in planner.tools_schema if t["name"] == "retrieve_knowledge")
+    assert "query" in tool["parameters"]["properties"]
 

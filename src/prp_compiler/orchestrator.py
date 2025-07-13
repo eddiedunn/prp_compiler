@@ -30,6 +30,13 @@ class Orchestrator:
     def execute_action(self, action: Action) -> str:
         """Dynamically loads and executes an action primitive from its file path."""
         try:
+            # Built-in retrieval bypasses the primitive loader and directly
+            # queries the KnowledgeStore.
+            if action.tool_name == "retrieve_knowledge":
+                query = action.arguments.get("query", "")
+                chunks = self.knowledge_store.retrieve(query)
+                return "\n".join(chunks)
+
             actions = self.primitive_loader.primitives.get("actions", {})
             action_manifest = actions.get(action.tool_name)
             if not action_manifest:
