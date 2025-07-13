@@ -31,7 +31,7 @@ class PrimitiveLoader:
                 latest_version, manifest = self._find_latest_version(
                     primitive_name_path
                 )
-                if latest_version:
+                if latest_version and manifest:
                     loaded[type_name][name] = manifest
         return loaded
 

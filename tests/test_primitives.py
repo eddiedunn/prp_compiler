@@ -27,6 +27,17 @@ description: Search the web for a query (improved).
     return base
 
 
+@pytest.fixture
+def temp_primitives_dir_invalid(tmp_path):
+    base = tmp_path / "temp_primitives_invalid"
+    invalid = base / "actions" / "bad_action"
+    version_dir = invalid / "1.0.0"
+    version_dir.mkdir(parents=True)
+    # add a directory that isn't a semantic version
+    (invalid / "not_a_version").mkdir()
+    return base
+
+
 def test_primitive_loader_latest_version(temp_primitives_dir):
     loader = PrimitiveLoader(temp_primitives_dir)
     actions = loader.get_all("actions")
@@ -34,3 +45,9 @@ def test_primitive_loader_latest_version(temp_primitives_dir):
     action = actions[0]
     assert action["version"] == "1.1.0"
     assert action["name"] == "web_search"
+
+
+def test_primitive_loader_ignores_invalid(temp_primitives_dir_invalid):
+    loader = PrimitiveLoader(temp_primitives_dir_invalid)
+    actions = loader.get_all("actions")
+    assert actions == []
