@@ -43,7 +43,7 @@ class Orchestrator:
         cache_key = self._compute_action_cache_key(action)
         if self.result_cache:
             cached = self.result_cache.get(cache_key)
-            if cached:
+            if isinstance(cached, dict) and "result" in cached:
                 return cached["result"]
         try:
             # Built-in retrieval bypasses the primitive loader and directly
@@ -100,7 +100,11 @@ class Orchestrator:
         cache_key = self._compute_cache_key(user_goal)
         if self.result_cache:
             cached = self.result_cache.get(cache_key)
-            if cached:
+            if (
+                isinstance(cached, dict)
+                and "schema_choice" in cached
+                and "final_context" in cached
+            ):
                 return cached["schema_choice"], cached["final_context"]
 
         # STEP 1: Select Strategy
