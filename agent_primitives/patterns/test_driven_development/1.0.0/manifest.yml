@@ -1,0 +1,6 @@
+name: "test_driven_development"
+type: "pattern"
+version: "1.0.0"
+description: "Guidelines for implementing features using a test-first approach."
+entrypoint: "template.md"
+keywords: ["testing", "tdd", "development", "best_practice"]

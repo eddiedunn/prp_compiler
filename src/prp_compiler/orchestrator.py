@@ -2,6 +2,8 @@ import importlib
 from pathlib import Path
 from typing import Tuple
 
+import typer
+
 from .agents.planner import Action, PlannerAgent
 from .knowledge import VectorStore
 from .cache import ResultCache
@@ -33,14 +35,26 @@ class Orchestrator:
         self.planner = PlannerAgent(self.primitive_loader)
 
     def execute_action(self, action: Action) -> str:
-        """Dynamically loads and executes an action primitive from its file path."""
+        """Dynamically loads and executes an action primitive from its file path.
+
+        Results are cached based on the tool name and arguments to avoid
+        repeating expensive operations across runs.
+        """
+        cache_key = self._compute_action_cache_key(action)
+        if self.result_cache:
+            cached = self.result_cache.get(cache_key)
+            if cached:
+                return cached["result"]
         try:
             # Built-in retrieval bypasses the primitive loader and directly
             # queries the KnowledgeStore.
             if action.tool_name == "retrieve_knowledge":
                 query = action.arguments.get("query", "")
                 chunks = self.knowledge_store.retrieve(query)
-                return "\n".join(chunks)
+                result = "\n".join(chunks)
+                if self.result_cache:
+                    self.result_cache.set(cache_key, {"result": result})
+                return result
 
             actions = self.primitive_loader.primitives.get("actions", {})
             action_manifest = actions.get(action.tool_name)
@@ -67,7 +81,11 @@ class Orchestrator:
             # Execute the function with its arguments and return the result as a string
             result = action_function(**action.arguments)
 
-            return str(result)
+            result_str = str(result)
+            if self.result_cache:
+                self.result_cache.set(cache_key, {"result": result_str})
+
+            return result_str
         except Exception as e:
             return f"[ERROR] Failed to execute action '{action.tool_name}': {e}"
 
@@ -96,10 +114,12 @@ class Orchestrator:
                     f"Critique: {step.thought.criticism}"
                 )
                 final_context_parts.append(thought_text)
+                typer.secho(f"\U0001F914 {thought_text}", fg=typer.colors.CYAN)
 
                 action = step.thought.next_action
                 action_text = f"Action: {action.tool_name}({action.arguments})"
                 final_context_parts.append(action_text)
+                typer.secho(f"\u25B6\uFE0F {action_text}", fg=typer.colors.MAGENTA)
 
                 if action.tool_name == "finish":
                     final_plan_args = action.arguments
@@ -108,6 +128,7 @@ class Orchestrator:
                 observation = self.execute_action(action)
                 observation_text = f"Observation: {observation}"
                 final_context_parts.append(observation_text)
+                typer.secho(f"\U0001F440 {observation_text}", fg=typer.colors.GREEN)
 
                 # Update history for the next step
                 history.append(thought_text)
@@ -166,3 +187,14 @@ class Orchestrator:
                 parts.append(f"{p_type}:{name}:{version}")
         joined = "|".join(sorted(parts))
         return hashlib.sha256(joined.encode()).hexdigest()
+
+    def _compute_action_cache_key(self, action: Action) -> str:
+        """Generate a cache key for an individual action call."""
+        import hashlib
+        import json
+
+        data = {
+            "tool": action.tool_name,
+            "args": action.arguments,
+        }
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
