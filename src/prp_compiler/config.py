@@ -16,8 +16,6 @@ DEFAULT_KNOWLEDGE_PATH = PROJECT_ROOT / "agent_primitives/knowledge"
 DEFAULT_SCHEMAS_PATH = PROJECT_ROOT / "agent_primitives/schemas"
 DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
 
-# Allowlist for shell commands to prevent arbitrary code execution.
-ALLOWED_SHELL_COMMANDS = ["git", "ls", "cat", "tree", "echo"]
 
 
 def configure_gemini():

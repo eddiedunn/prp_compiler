@@ -51,7 +51,7 @@ def test_plan_step_uses_strategy(mock_generative_model, mock_primitive_loader):
     step = planner.plan_step(
         user_goal="goal",
         constitution="",
-        strategy={"template": "My Strategy"},
+        strategy_content="My Strategy",
         history=["Observation: start"],
     )
 

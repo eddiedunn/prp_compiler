@@ -121,22 +121,19 @@ class PlannerAgent(BaseAgent):
             raise ValueError("Planner failed to select a strategy.")
         return fc.args["strategy_name"]
 
-    def plan_step(self, user_goal: str, constitution: str, strategy: Dict[str, Any], history: List[str]) -> ReActStep:
-        """Perform a single ReAct planning step using the provided strategy."""
-        template = strategy.get("template", "")
-        variables = {
-            "user_goal": user_goal,
-            "tools_json_schema": json.dumps(self.actions_schema, indent=2),
-            "history": "\n".join(history),
-            "finish_criteria": strategy.get("finish_criteria", ""),
-            "required_context_pieces": strategy.get("required_context_pieces", ""),
-        }
-        try:
-            strategy_prompt = template.format(**variables)
-        except KeyError as e:
-            raise ValueError(f"Missing template variable {e} in strategy {strategy.get('name')}")
-
-        prompt = constitution + "\n\n" + strategy_prompt
+    def plan_step(
+        self,
+        user_goal: str,
+        constitution: str,
+        strategy_content: str,
+        history: List[str],
+    ) -> ReActStep:
+        """Perform a single ReAct planning step using the provided strategy template."""
+        prompt = constitution + "\n\n" + strategy_content.format(
+            user_goal=user_goal,
+            tools_json_schema=json.dumps(self.actions_schema, indent=2),
+            history="\n".join(history),
+        )
         response = self.model.generate_content(prompt, tools=self.actions_schema)
         fc_part = response.candidates[0].content.parts[0]
         if not hasattr(fc_part, "function_call"):

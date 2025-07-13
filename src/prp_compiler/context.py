@@ -1,41 +1,43 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Any, Dict, List
 
-from .utils import count_tokens
+import tiktoken
 
 
 class ContextManager:
-    """Manages the ReAct history with automatic summarization."""
+    """Manages ReAct history with automatic summarization to avoid token overflow."""
 
-    def __init__(self, model, token_limit: int = 8000) -> None:
+    def __init__(self, model: Any, token_limit: int = 80000) -> None:
         self.model = model
         self.token_limit = token_limit
-        self.history: List[str] = []
+        self.history: List[Dict[str, str]] = []
+        self._tokenizer = tiktoken.get_encoding("cl100k_base")
 
-    def add(self, entry: str) -> None:
-        """Add a new history entry and summarize if needed."""
-        self.history.append(entry)
-        self._maybe_summarize()
+    def add_entry(self, role: str, content: str) -> None:
+        self.history.append({"role": role, "content": content})
+        self._summarize_if_needed()
 
-    def _maybe_summarize(self) -> None:
-        current_tokens = count_tokens("\n".join(self.history))
-        if current_tokens <= int(self.token_limit * 0.8):
-            return
-        if len(self.history) <= 3:
-            return
-        old_entries = self.history[:-3]
-        recent_entries = self.history[-3:]
-        prompt = (
-            "Summarize these previous steps so the context fits in fewer tokens:\n"
-            + "\n".join(old_entries)
-        )
-        try:
-            response = self.model.generate_content(prompt)
-            summary = response.text.strip()
-        except Exception:
-            summary = "(failed to summarize history)"
-        self.history = [f"Summary: {summary}"] + recent_entries
+    def get_history_str(self, subset: List[Dict[str, str]] | None = None) -> str:
+        entries = subset if subset is not None else self.history
+        return "\n".join([f"{e['role']}: {e['content']}" for e in entries])
 
-    def as_list(self) -> List[str]:
-        return list(self.history)
+    def _current_token_count(self) -> int:
+        return len(self._tokenizer.encode(self.get_history_str()))
+
+    def _summarize_if_needed(self) -> None:
+        if self._current_token_count() > self.token_limit:
+            print("[INFO] Context limit reached, summarizing history...")
+            keep_last_n = 5
+            to_summarize = self.history[:-keep_last_n]
+            keep_these = self.history[-keep_last_n:]
+            summary_prompt = (
+                "Summarize the following conversation history into a concise paragraph:\n\n"
+                + self.get_history_str(to_summarize)
+            )
+            response = self.model.generate_content(summary_prompt)
+            summary = response.text
+            self.history = [
+                {"role": "Observation", "content": f"Summary of previous steps: {summary}"}
+            ] + keep_these
+            print(f"[INFO] History summarized. New token count: {self._current_token_count()}")
