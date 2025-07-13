@@ -4,6 +4,7 @@ This guide provides instructions for developing and contributing to the `prp-com
 
 ## Dev Environment Tips
 - Use `uv run <script_name>` to execute predefined scripts from `pyproject.toml`. Key scripts include:
+  - `uv run pytest -v`: Run the full test suite.
   - `uv run lint`: Run the Ruff linter to check for style issues.
   - `uv run validate`: Run mypy for static type checking.
 - Run `uv sync` any time you pull changes that might have updated the `pyproject.toml` to ensure your local environment has all the required dependencies.
