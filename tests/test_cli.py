@@ -109,6 +109,7 @@ def test_cli_compile_command(
         # Create a dummy primitives directory so the loader doesn't fail
         primitives_dir = Path(tmpdir) / "agent_primitives"
         primitives_dir.mkdir()
+        plan_file = Path(tmpdir) / "plan.txt"
         result = runner.invoke(
             app,
             [
@@ -116,6 +117,8 @@ def test_cli_compile_command(
                 "test-goal",
                 "--out",
                 str(output_file),
+                "--plan-out",
+                str(plan_file),
                 "--primitives-path",
                 str(primitives_dir),
             ],
@@ -125,7 +128,9 @@ def test_cli_compile_command(
             f"CLI command failed.\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
         assert output_file.exists()
+        assert plan_file.exists()
         with open(output_file) as f:
             data = json.load(f)
         assert data["goal"] == "Test goal"
         assert data["why"] == "Test why"
+        assert plan_file.read_text() == "dummy context"
