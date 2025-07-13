@@ -95,15 +95,15 @@ class PlannerAgent(BaseAgent):
                 "reasoning": {
                     "type": "string",
                     "description": (
-                        "Your detailed reasoning for choosing this action. Explain why "
-                        "this specific tool is the best choice right now."
+                        "Your detailed reasoning for choosing this action. Explain why this specific "
+                        "tool is the best choice right now."
                     ),
                 },
                 "criticism": {
                     "type": "string",
                     "description": (
-                        "A critique of your own reasoning and plan. What are the flaws "
-                        "in your current approach? What could go wrong?"
+                        "A critique of your own reasoning and plan. What are the flaws in your "
+                        "current approach? What could go wrong?"
                     ),
                 },
             }

@@ -19,7 +19,7 @@ class KnowledgeStore:
         # WHY: Use mock embeddings for local development to avoid credential issues.
         if os.environ.get("USE_MOCK_EMBEDDINGS") == "true":
             print("Using mock embeddings for knowledge store.")
-            # The size should match the expected dimension of the real model if possible.
+            # The size should match the expected dimension of the real model.
             # For testing purposes, 768 is a common size.
             self.embeddings = FakeEmbeddings(size=768)
         else:

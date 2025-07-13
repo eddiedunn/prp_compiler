@@ -5,9 +5,10 @@ from jsonschema import ValidationError, validate
 from .base_agent import BaseAgent
 
 SYNTHESIZER_PROMPT_TEMPLATE = """
-You are an expert prompt engineer. Your task is to generate a complete and detailed Product Requirement Prompt (PRP).
-Your output **MUST** be a single, valid JSON object that strictly conforms to the provided JSON schema.
-Do not output any text, explanation, or markdown formatting outside of the JSON object itself.
+You are an expert prompt engineer. Your task is to generate a complete and detailed
+Product Requirement Prompt (PRP). Your output **MUST** be a single, valid JSON
+object that strictly conforms to the provided JSON schema. Do not output any text,
+explanation, or markdown formatting outside of the JSON object itself.
 
 **JSON Schema to follow:**
 {json_schema}
@@ -19,8 +20,10 @@ Now, generate the JSON object for the PRP based on the context and schema.
 """
 
 class SynthesizerAgent(BaseAgent):
-    def synthesize(self, schema: dict, context: str, constitution: str, max_retries: int = 2) -> dict:
-        """Generates the final PRP JSON, validating it against the schema and retrying if necessary."""
+    def synthesize(
+        self, schema: dict, context: str, constitution: str, max_retries: int = 2
+    ) -> dict:
+        """Generates the final PRP JSON, validating it against the schema and retrying."""
         prompt = (
             constitution
             + "\n\n"
@@ -36,10 +39,15 @@ class SynthesizerAgent(BaseAgent):
             try:
                 generated_json = json.loads(cleaned_response_text)
                 validate(instance=generated_json, schema=schema)
-                print(f"Synthesizer output validated successfully on attempt {attempt + 1}.")
+                print(
+                    f"Synthesizer output validated successfully on attempt {attempt + 1}."
+                )
                 return generated_json
             except (json.JSONDecodeError, ValidationError) as e:
-                print(f"[WARNING] Synthesizer output validation failed on attempt {attempt + 1}: {e}")
+                print(
+                    f"[WARNING] Synthesizer output validation failed on attempt "
+                    f"{attempt + 1}: {e}"
+                )
                 # Append error to prompt for self-correction
                 prompt += (
                     f"\n\nPREVIOUS ATTEMPT FAILED. DO NOT REPEAT THE MISTAKE. "
@@ -47,4 +55,6 @@ class SynthesizerAgent(BaseAgent):
                     f"Please correct the JSON output to strictly conform to the schema."
                 )
 
-        raise RuntimeError(f"Synthesizer failed to produce a valid PRP JSON after {max_retries} attempts.")
+        raise RuntimeError(
+            f"Synthesizer failed to produce a valid PRP JSON after {max_retries} attempts."
+        )
