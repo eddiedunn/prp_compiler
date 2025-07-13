@@ -113,7 +113,7 @@ class PlannerAgent(BaseAgent):
     def select_strategy(self, user_goal: str, constitution: str) -> str:
         prompt = constitution + "\n\n" + STRATEGY_SELECTION_PROMPT.format(
             user_goal=user_goal,
-            strategies_json_schema=json.dumps(self.strategies_schema, indent=2),
+            strategies_json_schema=json.dumps(self.strategies_schema, indent=2).replace("{", "{{").replace("}", "}}"),
         )
         response = self.model.generate_content(prompt, tools=self.strategies_schema)
         fc = response.candidates[0].content.parts[0].function_call
@@ -129,7 +129,11 @@ class PlannerAgent(BaseAgent):
         history: List[str],
     ) -> ReActStep:
         """Perform a single ReAct planning step using the provided strategy template."""
-        variables = {"user_goal": user_goal, "tools_json_schema": json.dumps(self.actions_schema, indent=2), "history": "\n".join(history)}
+        variables = {
+            "user_goal": user_goal,
+            "tools_json_schema": json.dumps(self.actions_schema, indent=2).replace("{", "{{").replace("}", "}}"),
+            "history": "\n".join(history),
+        }
         try:
             strategy_prompt = strategy_content.format(**variables)
         except KeyError as e:

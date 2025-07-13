@@ -28,7 +28,8 @@ class SynthesizerAgent(BaseAgent):
             constitution
             + "\n\n"
             + SYNTHESIZER_PROMPT_TEMPLATE.format(
-                json_schema=json.dumps(schema, indent=2), context=context
+                json_schema=json.dumps(schema, indent=2).replace("{", "{{").replace("}", "}}"),
+                context=context,
             )
         )
 

@@ -102,10 +102,9 @@ class Orchestrator:
                 raise ImportError(f"Could not create module spec for {entrypoint_path}")
 
             action_module = importlib.util.module_from_spec(spec)
-            # Inject secure subprocess runner
-            if hasattr(action_module, 'subprocess_run'):
-                action_module.subprocess_run = secure_subprocess_run  # type: ignore
             spec.loader.exec_module(action_module)
+            # Always inject secure subprocess runner so actions can use `subprocess_run`
+            action_module.subprocess_run = secure_subprocess_run  # type: ignore
 
             action_function = getattr(action_module, function_str)
 
