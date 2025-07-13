@@ -8,11 +8,13 @@ from src.prp_compiler.main import compile
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 
-def find_golden_cases():
-    cases = []
+def find_golden_cases() -> list[tuple[str, Path, Path]]:
+    """Return a list of (name, goal_path, expected_path) tuples for testing."""
+    cases: list[tuple[str, Path, Path]] = []
     if not GOLDEN_DIR.is_dir():
         return cases
-    for subdir in GOLDEN_DIR.iterdir():
+
+    for subdir in sorted(GOLDEN_DIR.iterdir()):
         if subdir.is_dir():
             goal_md = subdir / "goal.md"
             expected_json = subdir / "expected_prp.json"
@@ -41,9 +43,13 @@ def mock_primitive_loader():
     return loader
 
 
+CASES = find_golden_cases()
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "name, goal_md, expected_json_path", find_golden_cases()
+    "name, goal_md, expected_json_path",
+    CASES,
+    ids=[case[0] for case in CASES],
 )
 @patch("src.prp_compiler.main.configure_gemini")
 @patch("src.prp_compiler.main.KnowledgeStore")
