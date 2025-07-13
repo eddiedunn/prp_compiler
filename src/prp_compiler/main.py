@@ -73,11 +73,17 @@ def compile(
         typer.echo("2. Running Planner Agent to gather context...")
         orchestrator = Orchestrator(loader, knowledge_store, result_cache, debug=debug)
         chosen_strategy = strategy
-        schema_choice, final_context, history = orchestrator.run(
+        run_result = orchestrator.run(
             goal,
             constitution,
             strategy_name=chosen_strategy,
         )
+        if len(run_result) == 3:
+            schema_choice, final_context, history = run_result
+        else:
+            # Handle error case where run might return 2 values
+            typer.secho(f"❌ Orchestrator returned an error: {run_result[1]}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
 
         if plan_file is not None:
             plan_file.parent.mkdir(parents=True, exist_ok=True)
@@ -152,10 +158,15 @@ def serve(
             goal, out_path = await queue.get()
             typer.echo(f"Worker {name} starting: {goal}")
             orchestrator = Orchestrator(loader, knowledge_store, result_cache)
-            schema_choice, final_context, _ = orchestrator.run(
+            run_result = orchestrator.run(
                 goal,
                 constitution_path.read_text() if constitution_path.exists() else "",
             )
+            if len(run_result) != 3:
+                typer.secho(f"Worker {name} failed: {run_result[1]}", fg=typer.colors.RED)
+                queue.task_done()
+                continue
+            schema_choice, final_context, _ = run_result
             schema_str = loader.get_primitive_content("schemas", schema_choice)
             synthesizer = SynthesizerAgent()
             prp = synthesizer.synthesize(

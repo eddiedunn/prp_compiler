@@ -82,10 +82,12 @@ def test_golden_prp(
     mock_loader_instance = mock_loader_class.return_value
     # Mock the loader to return a valid schema when get_primitive_content is called.
     # This is what the compile() function actually calls.
-    mock_loader_instance.get_primitive_content.return_value = json.dumps(
-        {"type": "object"}
-    )
-    mock_knowledge_store_class.return_value
+    mock_loader_instance = mock_loader_class.return_value
+    # Mock the loader to return a valid schema when get_primitive_content is called.
+    # This is what the compile() function actually calls.
+    mock_loader_instance.get_primitive_content.return_value = json.dumps({"type": "object"})
+    mock_knowledge_store_instance = mock_knowledge_store_class.return_value
+    mock_knowledge_store_instance.retrieve.return_value = ["mock knowledge"]
 
     # 2. Set up paths and read test case data
     output_file = tmp_path / "output.json"
