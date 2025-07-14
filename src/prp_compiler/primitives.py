@@ -66,6 +66,7 @@ class PrimitiveLoader:
     def _load_all(self) -> Dict[str, Any]:
         """
         Walks the base path and loads the latest compatible version of each primitive.
+        The key is now the 'name' from the manifest, not the directory name.
         """
         loaded: dict[str, Any] = {}
         for primitive_type_path in self.base_path.iterdir():
@@ -76,12 +77,17 @@ class PrimitiveLoader:
             for primitive_name_path in primitive_type_path.iterdir():
                 if not primitive_name_path.is_dir():
                     continue
-                name = primitive_name_path.name
+                
                 latest_version, manifest = self._find_latest_version(
                     primitive_name_path
                 )
                 if latest_version and manifest:
-                    loaded[type_name][name] = manifest
+                    # Use the 'name' from the manifest as the canonical key.
+                    manifest_name = manifest.get("name")
+                    if not manifest_name:
+                        print(f"Warning: Manifest in {primitive_name_path} is missing a 'name'. Skipping.")
+                        continue
+                    loaded[type_name][manifest_name] = manifest
         return loaded
 
     def _find_latest_version(self, path: Path) -> Tuple[Version, Dict[str, Any]]:

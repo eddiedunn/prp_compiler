@@ -18,6 +18,26 @@ Based on the user's goal, which strategy is most appropriate? Call the `select_s
 
 
 
+def _convert_schema_to_gemini(data: Any) -> Any:
+    """Recursively converts a standard JSON schema dict to the Gemini format."""
+    if isinstance(data, dict):
+        new_dict = {}
+        for k, v in data.items():
+            if k == 'default':
+                continue  # Gemini's schema doesn't support 'default'
+
+            new_key = k
+            if k == 'type':
+                new_key = 'type_'
+                if isinstance(v, str):
+                    v = v.upper()  # "object" -> "OBJECT"
+            new_dict[new_key] = _convert_schema_to_gemini(v)
+        return new_dict
+    if isinstance(data, list):
+        return [_convert_schema_to_gemini(item) for item in data]
+    return data
+
+
 class PlannerAgent(BaseAgent):
     def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"):
         super().__init__(model_name=model_name)
@@ -102,22 +122,12 @@ class PlannerAgent(BaseAgent):
         gemini_tools = []
         for action in actions:
             try:
-                # Ensure we have a valid schema
+                # 1. Load the standard JSON schema from the manifest
                 schema = action.get("inputs_schema", {"type": "object", "properties": {}})
-                
-                # Ensure schema has required fields
-                if not isinstance(schema, dict):
-                    print(f"Warning: Schema for action {action.get('name', 'unknown')} is not a dictionary")
-                    continue
-                    
-                # Ensure properties exists and is a dictionary
+
+                # 2. Add the standard 'thought' properties to it
                 if "properties" not in schema:
                     schema["properties"] = {}
-                elif not isinstance(schema["properties"], dict):
-                    print(f"Warning: Properties for action {action.get('name', 'unknown')} is not a dictionary")
-                    schema["properties"] = {}
-                
-                # Add thought properties
                 thought_properties = {
                     "reasoning": {
                         "type": "string",
@@ -128,27 +138,23 @@ class PlannerAgent(BaseAgent):
                         "description": "A critique of your own reasoning and plan. What are the flaws in your current approach? What could go wrong?",
                     },
                 }
-                
-                # Update properties with thought properties
                 schema["properties"].update(thought_properties)
-                
-                # Ensure required field exists and is a list
+
                 if "required" not in schema:
                     schema["required"] = []
-                elif not isinstance(schema["required"], list):
-                    print(f"Warning: Required field for action {action.get('name', 'unknown')} is not a list, resetting to empty list")
-                    schema["required"] = []
-                
-                # Add thought properties to required
+
                 for prop in ["reasoning", "criticism"]:
                     if prop not in schema["required"]:
                         schema["required"].append(prop)
-                
-                # Create the tool definition
+
+                # 3. Convert the entire, modified schema to the Gemini format
+                gemini_schema = _convert_schema_to_gemini(schema)
+
+                # 4. Create the final tool definition with the converted schema
                 tool = {
                     "name": action.get("name", ""),
                     "description": action.get("description", ""),
-                    "parameters": schema,
+                    "parameters": gemini_schema,
                 }
                 
                 # Validate required fields
@@ -253,9 +259,41 @@ class PlannerAgent(BaseAgent):
         history: List[str],
     ) -> ReActStep:
         """Perform a single ReAct planning step using the provided strategy template."""
+        # Provide the agent with a list of available patterns and schemas to prevent hallucination.
+        patterns = self.primitive_loader.get_all("patterns")
+        
+        # Debug: Print available patterns
+        print("\n=== DEBUG: Available Patterns ===")
+        for p in patterns:
+            print(f"- {p['name']}: {p.get('description', 'No description')}")
+        
+        formatted_patterns = json.dumps(
+            [{"name": p["name"], "description": p["description"]} for p in patterns],
+            indent=2,
+        ).replace("{", "{{").replace("}", "}}")
+        
+        # Get available schemas for the agent to choose from
+        schemas = self.primitive_loader.get_all("schemas")
+        
+        # Debug: Print available schemas
+        print("\n=== DEBUG: Available Schemas ===")
+        for s in schemas:
+            print(f"- {s['name']}: {s.get('description', 'No description')}")
+            
+        formatted_schemas = json.dumps(
+            [{"name": s["name"], "description": s.get("description", "No description available")} for s in schemas],
+            indent=2,
+        ).replace("{", "{{").replace("}", "}}")
+        
+        # Debug: Print actions schema
+        print("\n=== DEBUG: Actions Schema ===")
+        print(json.dumps(self.actions_schema, indent=2))
+
         variables = {
             "user_goal": user_goal,
             "tools_json_schema": json.dumps(self.actions_schema, indent=2).replace("{", "{{").replace("}", "}}"),
+            "patterns_json_schema": formatted_patterns,
+            "schemas_json_schema": formatted_schemas,
             "history": "\n".join(history),
         }
         try:
@@ -295,13 +333,18 @@ class PlannerAgent(BaseAgent):
             if not hasattr(response, 'candidates') or not response.candidates:
                 raise ValueError("No candidates in response from Gemini API")
                 
-            fc_part = response.candidates[0].content.parts[0]
-            
-            if not hasattr(fc_part, "function_call"):
+            # Find the part that contains the function call, as it may not be the first one.
+            fc_part = None
+            for part in response.candidates[0].content.parts:
+                if part.function_call and part.function_call.name:
+                    fc_part = part
+                    break
+
+            if not fc_part:
                 # Debug: Print the actual content of the part to help diagnose the issue
                 print("\n=== DEBUG: No function_call in response part ===")
-                print(f"Part type: {type(fc_part)}")
-                print(f"Part content: {fc_part}")
+                for i, p in enumerate(response.candidates[0].content.parts):
+                    print(f"Part {i}: {p}")
                 print("=== END DEBUG ===\n")
                 raise ValueError("Planner Agent did not return a function call. Check the debug output for the actual response.")
                 
