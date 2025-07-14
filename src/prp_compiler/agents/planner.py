@@ -39,7 +39,7 @@ def _convert_schema_to_gemini(data: Any) -> Any:
 
 
 class PlannerAgent(BaseAgent):
-    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-1.5-pro-latest"):
+    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-2.5-pro-latest"):
         super().__init__(model_name=model_name)
         self.primitive_loader = primitive_loader
         self.actions_schema = self._create_schema_for_type("actions")
