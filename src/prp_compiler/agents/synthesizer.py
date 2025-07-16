@@ -20,6 +20,12 @@ Now, generate the JSON object for the PRP based on the context and schema.
 """
 
 class SynthesizerAgent(BaseAgent):
+    def __init__(self, model_name: str | None = None):
+        if model_name is None:
+            from ..config import get_model_name
+            model_name = get_model_name("synthesizer")
+        super().__init__(model_name=model_name)
+
     def synthesize(
         self, schema: dict, context: str, constitution: str, max_retries: int = 2
     ) -> dict:

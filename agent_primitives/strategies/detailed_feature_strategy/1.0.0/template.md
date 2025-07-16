@@ -20,5 +20,12 @@ You can reference the following patterns by name in your `pattern_references` wh
 {history}
 
 **Your Task:**
-Based on the goal and the history, decide on the next logical step. Formulate a detailed thought process, including your reasoning and a self-critique. Then, call the single most appropriate tool to execute that step. Your response **MUST** be a single function call.
+Based on the goal and the history, decide on the next logical step. Formulate a detailed, step-by-step thought process, including your reasoning and a self-critique. Break down the problem into subproblems, consider edge cases, and plan for robust error handling. Use the most advanced features of the selected Gemini model to maximize creativity and technical depth.
+
+When generating scripts or commands:
+- Prefer robust, production-quality code with clear logging, comments, and error handling.
+- Always critique and improve your plan before calling the `finish` function.
+- Ensure the output is actionable, clear, and as close to a real-world solution as possible.
+
+Your response **MUST** be a single function call.
 When you have gathered all necessary context and are confident you can build a complete PRP, call the `finish` function.

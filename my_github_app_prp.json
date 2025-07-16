@@ -1,0 +1,10 @@
+{
+  "task_id": "gh_automerge_workflow",
+  "description": "This task automates a Git workflow using the 'gh' command-line tool.  It lists branches, creates pull requests for each, attempts auto-merge, and deletes the branch after successful merge.",
+  "command": {
+    "name": "bash",
+    "script": "#!/bin/bash\n\n# Get the top 10 branches sorted by most recent commit\nbranches=(\"$(gh branch -l | sort -k2 -r | head -n 10 | awk '{print $1}')\")\n\n# Iterate through each branch\nfor branch in \"${branches[@]}\"; do\n  # Check if the branch is not the main branch\n  if [[ \"$branch\" != \"main\" ]]; then\n    # Create a pull request\n    gh pr create --base main --head $branch --auto-merge --no-interactive\n    # Check if the pull request was created successfully. \n    # If not, print an error message and skip to the next branch.    \n    if [[ $? -ne 0 ]]; then\n      echo \"Error creating pull request for branch: $branch\"\n      continue\n    fi\n\n    # Wait for the pull request to merge (add a delay if needed). \n    sleep 5 # Example delay, adjust as needed\n\n    # Check if the auto-merge was successful. If it wasn't, print a message and skip branch deletion.\n    pr_status=$(gh pr view --json status --quiet)\n    if [[ \"$pr_status\" == \"merged\" ]]; then\n      # Delete the branch\n      gh branch delete $branch\n    else\n      echo \"Auto-merge failed for branch: $branch\"\n    fi\n  fi\ndone"
+  },
+  "inputs": [],
+  "outputs": []
+}

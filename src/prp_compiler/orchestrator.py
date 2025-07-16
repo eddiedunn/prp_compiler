@@ -8,6 +8,7 @@ from typing import Tuple
 import typer
 
 from .agents.planner import Action, PlannerAgent
+from .config import get_model_name
 from .config import ALLOWED_SHELL_COMMANDS
 from .knowledge import VectorStore
 from .cache import ResultCache
@@ -34,11 +35,12 @@ class Orchestrator:
         knowledge_store: VectorStore,
         result_cache: "ResultCache | None" = None,
         debug: bool = False,
+        model_name: str = None,
     ):
         self.primitive_loader = primitive_loader
         self.knowledge_store = knowledge_store
         self.result_cache = result_cache
-        self.planner = PlannerAgent(self.primitive_loader)
+        self.planner = PlannerAgent(self.primitive_loader, model_name=model_name or get_model_name('planner'))
         self.debug = debug
 
     def execute_action(self, action: Action) -> str:

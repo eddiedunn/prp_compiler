@@ -5,7 +5,13 @@ from pathlib import Path
 import typer
 
 from .agents.synthesizer import SynthesizerAgent
-from .config import configure_gemini
+from .config import configure_gemini, get_model_name
+
+try:
+    import google.generativeai as genai
+except Exception:
+    genai = None
+
 from .knowledge import ChromaKnowledgeStore
 from .cache import ResultCache
 from .orchestrator import Orchestrator
@@ -71,7 +77,9 @@ def compile(
             constitution = ""
 
         typer.echo("2. Running Planner Agent to gather context...")
-        orchestrator = Orchestrator(loader, knowledge_store, result_cache, debug=debug)
+        planner_model_name = get_model_name("planner")
+        typer.secho(f"[INFO] Using Gemini model for Planner: {planner_model_name}", fg=typer.colors.CYAN)
+        orchestrator = Orchestrator(loader, knowledge_store, result_cache, debug=debug, model_name=planner_model_name)
         chosen_strategy = strategy
         run_result = orchestrator.run(
             goal,
@@ -200,6 +208,25 @@ def serve(
 def run():
     app()
 
+
+@app.command()
+def list_models():
+    """List all available Google GenAI models for the configured API key."""
+    configure_gemini()
+    if not genai:
+        print("google.generativeai is not available.")
+        return
+    try:
+        models = list(genai.list_models())
+        if not models:
+            print("No models found for your API key.")
+            return
+        print("Available Gemini Models:")
+        for model in models:
+            desc = getattr(model, 'description', None) or getattr(model, 'display_name', None) or ''
+            print(f"- {model.name}: {desc}")
+    except Exception as e:
+        print(f"Error fetching models: {e}")
 
 if __name__ == "__main__":
     run()

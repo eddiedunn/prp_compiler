@@ -35,18 +35,17 @@ class ChromaKnowledgeStore:
         # WHY: Use mock embeddings for local development to avoid credential issues.
         if os.environ.get("USE_MOCK_EMBEDDINGS") == "true":
             print("Using mock embeddings for knowledge store.")
-            # The size should match the expected dimension of the real model.
-            # For testing purposes, 768 is a common size.
             self.embeddings = FakeEmbeddings(size=768)
         else:
-            # WHY: We use Google's embedding model for consistency with the main LLM.
-            # Get the API key from environment variables
-            api_key = os.getenv("GEMINI_API_KEY")
+            from .config import configure_gemini, get_model_name
+            configure_gemini()
+            embedding_model_name = get_model_name("embedding")
+            print(f"Using embedding model: {embedding_model_name}")
+            api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("GEMINI_API_KEY environment variable is not set")
-                
+                raise ValueError("GEMINI_API_KEY environment variable is not set after configure_gemini().")
             self.embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001",
+                model=embedding_model_name,
                 google_api_key=api_key
             )
         self.db: Chroma | None = None

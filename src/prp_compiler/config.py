@@ -19,6 +19,40 @@ DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifests/"
 ALLOWED_SHELL_COMMANDS = ["echo", "ls"]
 
 
+def get_model_name(role: str) -> str:
+    """
+    Returns the Gemini model name for a specific role.
+    Loads from environment variables or .env file, with sensible defaults.
+    
+    Args:
+        role: The role of the model (e.g., "planner", "synthesizer", "embedding").
+    """
+    # Map roles to environment variables and default models
+    model_map = {
+        "planner": ("PLANNER_MODEL", "models/gemini-1.5-pro-latest"),
+        "synthesizer": ("SYNTHESIZER_MODEL", "models/gemini-1.5-flash-latest"),
+        "summarizer": ("SUMMARIZER_MODEL", "models/gemini-1.5-flash-latest"),
+        "embedding": ("EMBEDDING_MODEL", "models/embedding-001"),
+    }
+    
+    env_var_name, default_model = model_map.get(role, (None, None))
+    
+    if not env_var_name:
+        raise ValueError(f"Unknown model role: {role}")
+
+    # Try getting from os.environ first
+    model_name = os.environ.get(env_var_name)
+    
+    # If not found, try loading from .env
+    model_name = os.environ.get("PRP_MODEL_NAME")
+    if not model_name:
+        try:
+            load_dotenv(PROJECT_ROOT / ".env")
+            model_name = os.environ.get("PRP_MODEL_NAME")
+        except ImportError:
+            pass
+    return model_name or "models/gemini-1.5-pro-latest"
+
 
 def configure_gemini():
     """Loads the Gemini API key and configures the genai library."""

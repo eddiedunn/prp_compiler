@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from ..models import Action, ReActStep, Thought
 from ..primitives import PrimitiveLoader
 from .base_agent import BaseAgent
+from ..config import get_model_name
 
 STRATEGY_SELECTION_PROMPT = """
 You are an expert AI engineering architect. Your first task is to select the best strategy for generating a PRP based on the user's goal.
@@ -39,7 +40,9 @@ def _convert_schema_to_gemini(data: Any) -> Any:
 
 
 class PlannerAgent(BaseAgent):
-    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = "gemini-2.5-pro-latest"):
+    def __init__(self, primitive_loader: PrimitiveLoader, model_name: str = None):
+        if model_name is None:
+            model_name = get_model_name("planner")
         super().__init__(model_name=model_name)
         self.primitive_loader = primitive_loader
         self.actions_schema = self._create_schema_for_type("actions")
@@ -275,15 +278,18 @@ class PlannerAgent(BaseAgent):
         # Get available schemas for the agent to choose from
         schemas = self.primitive_loader.get_all("schemas")
         
-        # Debug: Print available schemas
-        print("\n=== DEBUG: Available Schemas ===")
-        for s in schemas:
-            print(f"- {s['name']}: {s.get('description', 'No description')}")
-            
+        # Only use the manifest 'name' for allowed schemas
+        allowed_schema_names = [s["name"] for s in schemas if "name" in s]
+        print("\n=== DEBUG: Allowed Schema Names for LLM ===")
+        for name in allowed_schema_names:
+            print(f"- {name}")
+        if not allowed_schema_names:
+            print("[ERROR] No schema names found in manifests! Aborting plan_step to prevent LLM hallucination.")
+            raise RuntimeError("No schema names available for planner to choose from. Please add at least one schema primitive with a manifest 'name'.")
         formatted_schemas = json.dumps(
-            [{"name": s["name"], "description": s.get("description", "No description available")} for s in schemas],
+            [{"name": name, "description": next((s.get("description", "No description available") for s in schemas if s["name"] == name), "No description available")} for name in allowed_schema_names],
             indent=2,
-        ).replace("{", "{{").replace("}", "}}")
+        ).replace("{", "{{").replace("}}", "}}")
         
         # Debug: Print actions schema
         print("\n=== DEBUG: Actions Schema ===")
